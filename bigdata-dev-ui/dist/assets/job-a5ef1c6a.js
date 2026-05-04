@@ -1,0 +1,1 @@
+import{a as o}from"./index-3c755c5d.js";function r(t){return o.post("/job/submit",t)}function n(t=1,s=10){return o.get("/job/list",{params:{page:t,size:s}})}function a(t){return o.post(`/job/${t}/kill`)}export{n as g,a as k,r as s};
