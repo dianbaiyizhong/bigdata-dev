@@ -20,3 +20,4 @@ bigdata-model/pyspark-demo/metastore_db/
 node_modules
 /docker/*.gz
 /docker/*.tgz
+dist/
