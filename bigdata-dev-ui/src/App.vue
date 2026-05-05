@@ -49,6 +49,7 @@
             :class="{ active: activePath === tab.path }"
             @click="switchTab(tab.path)"
           >
+            <v-icon size="16" class="mr-1">{{ tab.icon }}</v-icon>
             <span>{{ tab.title }}</span>
             <v-icon
               v-if="tabs.length > 1"
@@ -100,10 +101,10 @@ import JobSubmit from './views/JobSubmit.vue'
 import JobList from './views/JobList.vue'
 import DependencyManage from './views/DependencyManage.vue'
 
-const routeTitleMap = {
-  '/job/submit': '提交任务',
-  '/job/list': '任务列表',
-  '/dependency': '依赖管理'
+const routeMeta = {
+  '/job/submit': { title: '提交任务', icon: 'mdi-upload' },
+  '/job/list': { title: '任务列表', icon: 'mdi-format-list-bulleted' },
+  '/dependency': { title: '依赖管理', icon: 'mdi-package-variant-closed' }
 }
 
 export default {
@@ -119,7 +120,7 @@ export default {
       activePath.value = path
       router.replace(path)
       if (!tabs.value.find(t => t.path === path)) {
-        tabs.value.push({ path, title: routeTitleMap[path] || path })
+        tabs.value.push({ path, ...routeMeta[path] })
       }
     }
 
@@ -139,13 +140,13 @@ export default {
       if (path !== '/') {
         activePath.value = path
         if (!tabs.value.find(t => t.path === path)) {
-          tabs.value.push({ path, title: routeTitleMap[path] || path })
+          tabs.value.push({ path, ...routeMeta[path] })
         }
       }
     })
 
     // init first tab
-    tabs.value = [{ path: '/job/submit', title: '提交任务' }]
+    tabs.value = [{ path: '/job/submit', ...routeMeta['/job/submit'] }]
 
     const snackbar = reactive({
       show: false,

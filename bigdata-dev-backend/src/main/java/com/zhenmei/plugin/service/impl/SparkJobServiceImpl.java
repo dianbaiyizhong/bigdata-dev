@@ -21,6 +21,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -109,7 +112,9 @@ public class SparkJobServiceImpl implements SparkJobService {
             Process spark = launcher.launch();
             Long jobId = job.getId();
 
-            // 读取 stdout
+            Pattern appIdPattern = Pattern.compile("application_\\d+_\\d+");
+            AtomicBoolean appIdSet = new AtomicBoolean(false);
+
             StringBuilder stdoutBuilder = new StringBuilder();
             Thread stdoutThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
@@ -118,13 +123,25 @@ public class SparkJobServiceImpl implements SparkJobService {
                     while ((line = reader.readLine()) != null) {
                         stdoutBuilder.append(line).append("\n");
                         log.info("[JOB-{}][STDOUT] {}", jobId, line);
+
+                        if (!appIdSet.get()) {
+                            Matcher m = appIdPattern.matcher(line);
+                            if (m.find()) {
+                                String appId = m.group();
+                                appIdSet.set(true);
+                                SparkJob update = new SparkJob();
+                                update.setId(jobId);
+                                update.setAppId(appId);
+                                sparkJobMapper.updateById(update);
+                                log.info("[JOB-{}] 捕获到 appId: {}", jobId, appId);
+                            }
+                        }
                     }
                 } catch (IOException e) {
                     log.warn("[JOB-{}] 读取stdout异常", jobId, e);
                 }
             }, "stdout-reader-" + jobId);
 
-            // 读取 stderr
             StringBuilder stderrBuilder = new StringBuilder();
             Thread stderrThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
@@ -133,6 +150,19 @@ public class SparkJobServiceImpl implements SparkJobService {
                     while ((line = reader.readLine()) != null) {
                         stderrBuilder.append(line).append("\n");
                         log.warn("[JOB-{}][STDERR] {}", jobId, line);
+
+                        if (!appIdSet.get()) {
+                            Matcher m = appIdPattern.matcher(line);
+                            if (m.find()) {
+                                String appId = m.group();
+                                appIdSet.set(true);
+                                SparkJob update = new SparkJob();
+                                update.setId(jobId);
+                                update.setAppId(appId);
+                                sparkJobMapper.updateById(update);
+                                log.info("[JOB-{}] 捕获到 appId (stderr): {}", jobId, appId);
+                            }
+                        }
                     }
                 } catch (IOException e) {
                     log.warn("[JOB-{}] 读取stderr异常", jobId, e);

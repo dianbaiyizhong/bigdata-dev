@@ -74,8 +74,19 @@
           <template #item._jarCount="{ item }">
             <v-chip size="small" label>{{ item._jarCount || 0 }}</v-chip>
           </template>
+          <template #item.name="{ item }">
+            <v-tooltip location="top" :text="item.name">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.name }}</span>
+              </template>
+            </v-tooltip>
+          </template>
           <template #item.description="{ item }">
-            <span class="text-truncate d-inline-block" style="max-width: 200px">{{ item.description || '-' }}</span>
+            <v-tooltip location="top" :text="item.description || '-'">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.description || '-' }}</span>
+              </template>
+            </v-tooltip>
           </template>
           <template #item.createTime="{ item }">
             {{ formatTime(item.createTime) }}
@@ -115,7 +126,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- JAR管理弹窗 -->
     <v-dialog v-model="jarDialogVisible" max-width="700" @update:model-value="!jarDialogVisible && closeJarDialog()">
       <v-card>
         <v-card-title class="text-h6">
@@ -155,7 +165,11 @@
             no-data-text="暂无JAR文件"
           >
             <template #item.name="{ item }">
-              <span class="text-truncate d-inline-block" style="max-width: 280px">{{ item.name }}</span>
+              <v-tooltip location="top" :text="item.name">
+                <template #activator="{ props }">
+                  <span v-bind="props" class="d-block text-truncate">{{ item.name }}</span>
+                </template>
+              </v-tooltip>
             </template>
             <template #item.fileSize="{ item }">
               {{ item.fileSize ? formatSize(item.fileSize) : '-' }}
@@ -208,17 +222,17 @@ export default {
 
     const depHeaders = [
       { title: 'ID', key: 'id', width: 60 },
-      { title: '名称', key: 'name', minWidth: 200 },
-      { title: '描述', key: 'description', minWidth: 200 },
+      { title: '名称', key: 'name', minWidth: 120 },
+      { title: '描述', key: 'description', minWidth: 120 },
       { title: 'JAR数量', key: '_jarCount', width: 100 },
-      { title: '创建时间', key: 'createTime', width: 170 },
+      { title: '创建时间', key: 'createTime', minWidth: 150 },
       { title: '操作', key: 'actions', width: 160 }
     ]
 
     const jarHeaders = [
       { title: '文件名', key: 'name' },
       { title: '大小', key: 'fileSize', width: 120 },
-      { title: '上传时间', key: 'createTime', width: 170 },
+      { title: '上传时间', key: 'createTime', minWidth: 150 },
       { title: '操作', key: 'actions', width: 80 }
     ]
 
