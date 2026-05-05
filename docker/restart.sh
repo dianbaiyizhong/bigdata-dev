@@ -14,3 +14,4 @@
 # 启动hive
 nohup hive --service metastore 2>&1 &
 nohup hive --service hiveserver2 -hiveconf hive.execution.engine=mr 2>&1 &
+nohup java -jar /usr/local/bigdata-dev-backend.jar 2>&1 &

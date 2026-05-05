@@ -39,6 +39,9 @@ ADD mysql-connector-j-8.0.31.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/mysql
 ADD bigdata-dev-backend-1.0.jar /usr/local/bigdata-dev-backend.jar
 
 
+ADD pyspark.zip /usr/local/pyspark.zip
+
+
 ## 设置环境变量
 
 ENV SCALA_HOME=/usr/bigdata/scala-2.12.11
