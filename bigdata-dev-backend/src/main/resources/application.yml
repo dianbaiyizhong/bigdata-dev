@@ -1,5 +1,5 @@
 server:
-  port: 2408
+  port: 12408
 
 spring:
   application:
@@ -11,8 +11,8 @@ spring:
     password: root
   servlet:
     multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+      max-file-size: 2500MB
+      max-request-size: 2500MB
 
 mybatis-plus:
   configuration:

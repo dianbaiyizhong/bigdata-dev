@@ -190,7 +190,6 @@ export default {
       { title: 'AppId', key: 'appId', minWidth: 160 },
       { title: '任务名称', key: 'jobName', minWidth: 120 },
       { title: '状态', key: 'status', minWidth: 80 },
-      { title: '错误信息', key: 'errorMsg', minWidth: 120 },
       { title: '创建时间', key: 'createTime', minWidth: 150 },
       { title: '操作', key: 'actions', minWidth: 140 }
     ]

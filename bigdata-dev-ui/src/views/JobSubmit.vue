@@ -13,50 +13,94 @@
             density="comfortable"
           />
 
-          <div class="mb-3">
-            <label class="text-body-2 mb-1 d-block">上传JAR文件</label>
-            <div
-              class="drop-zone"
-              :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': selectedFile }"
-              @dragover.prevent="dragOver = true"
-              @dragleave.prevent="dragOver = false"
-              @drop.prevent="handleDrop"
-              @click="$refs.fileInput.click()"
-            >
-              <input
-                ref="fileInput"
-                type="file"
-                accept=".jar"
-                hidden
-                @change="handleFileSelect"
-              />
-              <template v-if="selectedFile">
-                <v-icon color="primary" size="24" class="mr-2">mdi-file-code</v-icon>
-                <span class="text-body-2">{{ selectedFile.name }}</span>
-                <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(selectedFile.size) }})</span>
-                <v-icon
-                  size="18"
-                  class="ml-3"
-                  color="grey"
-                  @click.stop="selectedFile = null"
-                >mdi-close</v-icon>
-              </template>
-              <template v-else>
-                <v-icon color="grey" size="40" class="mb-2">mdi-cloud-upload</v-icon>
-                <span class="text-body-2 text-medium-emphasis">拖拽 JAR，PY，ZIP 文件到此处，或点击选择</span>
-              </template>
-              <Icon icon="streamline-logos:spark-logo-solid" class="spark-icon" />
-            </div>
-          </div>
-
-          <v-text-field
-            v-model="form.mainClass"
-            label="主类"
-            placeholder="com.example.MainClass"
-            :rules="[v => !!v || '请输入主类名']"
-            variant="outlined"
+          <v-radio-group
+            v-model="form.jobType"
+            inline
             density="comfortable"
-          />
+            class="mb-3"
+          >
+            <v-radio label="Spark JAR" value="JAR" />
+            <v-radio label="PySpark" value="PYTHON" />
+          </v-radio-group>
+
+          <!-- JAR 上传 -->
+          <template v-if="form.jobType === 'JAR'">
+            <div class="mb-3">
+              <label class="text-body-2 mb-1 d-block">上传JAR文件</label>
+              <div
+                class="drop-zone"
+                :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': selectedFile }"
+                @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false"
+                @drop.prevent="handleDrop"
+                @click="$refs.fileInput.click()"
+              >
+                <input ref="fileInput" type="file" accept=".jar" hidden @change="handleFileSelect" />
+                <template v-if="selectedFile">
+                  <v-icon color="primary" size="24" class="mr-2">mdi-file-code</v-icon>
+                  <span class="text-body-2">{{ selectedFile.name }}</span>
+                  <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(selectedFile.size) }})</span>
+                  <v-icon size="18" class="ml-3" color="grey" @click.stop="selectedFile = null">mdi-close</v-icon>
+                </template>
+                <template v-else>
+                  <v-icon color="grey" size="40" class="mb-2">mdi-cloud-upload</v-icon>
+                  <span class="text-body-2 text-medium-emphasis">拖拽 JAR 文件到此处，或点击选择</span>
+                </template>
+                <Icon icon="streamline-logos:spark-logo-solid" class="spark-icon" />
+              </div>
+            </div>
+
+            <v-text-field
+              v-model="form.mainClass"
+              label="主类"
+              placeholder="com.example.MainClass"
+              :rules="[v => !!v || '请输入主类名']"
+              variant="outlined"
+              density="comfortable"
+            />
+          </template>
+
+          <!-- PySpark 上传 -->
+          <template v-if="form.jobType === 'PYTHON'">
+            <div class="mb-3">
+              <label class="text-body-2 mb-1 d-block">上传 Python 脚本</label>
+              <div
+                class="drop-zone drop-zone--py"
+                :class="{ 'drop-zone--active': pyDragOver, 'drop-zone--has-file': pyScriptFile }"
+                @dragover.prevent="pyDragOver = true"
+                @dragleave.prevent="pyDragOver = false"
+                @drop.prevent="handlePyDrop('script', $event)"
+                @click="$refs.pyScriptInput.click()"
+              >
+                <input ref="pyScriptInput" type="file" accept=".py" hidden @change="handlePyScriptSelect" />
+                <template v-if="pyScriptFile">
+                  <v-icon color="primary" size="24" class="mr-2">mdi-language-python</v-icon>
+                  <span class="text-body-2">{{ pyScriptFile.name }}</span>
+                  <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(pyScriptFile.size) }})</span>
+                  <v-icon size="18" class="ml-3" color="grey" @click.stop="pyScriptFile = null">mdi-close</v-icon>
+                </template>
+                <template v-else>
+                  <v-icon color="grey" size="40" class="mb-2">mdi-language-python</v-icon>
+                  <span class="text-body-2 text-medium-emphasis">拖拽 .py 脚本到此处，或点击选择</span>
+                </template>
+                <Icon icon="streamline-logos:spark-logo-solid" class="spark-icon" />
+              </div>
+            </div>
+
+            <v-select
+              v-model="form.pySparkZipId"
+              :items="pySparkZipList"
+              :item-title="(item) => `${item.name} (${formatSize(item.fileSize)})`"
+              :item-subtitle="(item) => item.hdfsPath || ''"
+              item-value="id"
+              label="选择 PySpark 依赖包"
+              hint="在「PySpark包」页面管理依赖包，上传到 HDFS"
+              persistent-hint
+              variant="outlined"
+              density="comfortable"
+              clearable
+            />
+          </template>
 
           <label class="text-body-2 mb-1 d-block">应用参数 (JSON)</label>
           <div class="cm-editor-wrapper mb-3">
@@ -187,6 +231,7 @@ import { json } from '@codemirror/lang-json'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { submitJob } from '../api/job'
 import { getDependencyList, getDependencyJars } from '../api/dependency'
+import { getPySparkZipList } from '../api/pyspark'
 import { useMessage } from '../composables/message'
 
 export default {
@@ -195,16 +240,24 @@ export default {
   setup() {
     const formRef = ref(null)
     const fileInput = ref(null)
+    const pyScriptInput = ref(null)
+    const pyZipInput = ref(null)
     const submitting = ref(false)
     const depList = ref([])
+    const pySparkZipList = ref([])
     const selectedFile = ref(null)
     const dragOver = ref(false)
+    const pyScriptFile = ref(null)
+    const pyZipFile = ref(null)
+    const pyDragOver = ref(false)
+    const pyZipDragOver = ref(false)
     const message = useMessage()
 
     const jsonExtensions = [json(), oneDark]
 
     const form = reactive({
       jobName: '',
+      jobType: 'JAR',
       mainClass: '',
       appArgs: '',
       driverMemory: 1024,
@@ -213,7 +266,8 @@ export default {
       executorCores: 1,
       numExecutors: 2,
       sparkProperties: '',
-      dependencyIds: []
+      dependencyIds: [],
+      pySparkZipId: null
     })
 
     const loadDeps = async () => {
@@ -232,16 +286,40 @@ export default {
     const handleDrop = (e) => {
       dragOver.value = false
       const files = e.dataTransfer?.files
-      if (files && files.length > 0) {
+      if (files && files.length > 0 && files[0].name.endsWith('.jar')) {
         selectedFile.value = files[0]
       } else {
-        message.warning('请选择 .jar .py .zip 文件')
+        message.warning('请选择 .jar 文件')
       }
     }
 
     const handleFileSelect = (e) => {
       const file = e.target.files?.[0]
       if (file) selectedFile.value = file
+    }
+
+    const handlePyDrop = (type, e) => {
+      if (type === 'script') pyDragOver.value = false
+      else pyZipDragOver.value = false
+      const files = e.dataTransfer?.files
+      if (!files || files.length === 0) return
+      if (type === 'script' && files[0].name.endsWith('.py')) {
+        pyScriptFile.value = files[0]
+      } else if (type === 'zip' && files[0].name.endsWith('.zip')) {
+        pyZipFile.value = files[0]
+      } else {
+        message.warning(type === 'script' ? '请选择 .py 文件' : '请选择 .zip 文件')
+      }
+    }
+
+    const handlePyScriptSelect = (e) => {
+      const file = e.target.files?.[0]
+      if (file) pyScriptFile.value = file
+    }
+
+    const handlePyZipSelect = (e) => {
+      const file = e.target.files?.[0]
+      if (file) pyZipFile.value = file
     }
 
     const formatSize = (bytes) => {
@@ -251,19 +329,32 @@ export default {
     }
 
     const handleSubmit = async () => {
-      if (!selectedFile.value) {
-        message.warning('请上传JAR文件')
+      const isPySpark = form.jobType === 'PYTHON'
+
+      if (isPySpark && !pyScriptFile.value) {
+        message.warning('请上传 Python 脚本')
         return
       }
+      if (!isPySpark && !selectedFile.value) {
+        message.warning('请上传 JAR 文件')
+        return
+      }
+
       const result = await formRef.value.validate()
       if (!result.valid) return
 
       submitting.value = true
       try {
         const fd = new FormData()
-        fd.append('file', selectedFile.value)
+        if (isPySpark) {
+          fd.append('pyScript', pyScriptFile.value)
+          if (form.pySparkZipId) fd.append('pySparkZipId', form.pySparkZipId)
+        } else {
+          fd.append('file', selectedFile.value)
+        }
         fd.append('jobName', form.jobName)
-        fd.append('mainClass', form.mainClass)
+        fd.append('jobType', form.jobType)
+        if (form.mainClass) fd.append('mainClass', form.mainClass)
         if (form.appArgs) fd.append('appArgs', form.appArgs)
         if (form.driverMemory) fd.append('driverMemory', form.driverMemory)
         if (form.driverCores) fd.append('driverCores', form.driverCores)
@@ -275,7 +366,7 @@ export default {
 
         await submitJob(fd)
         message.success('任务提交成功')
-        selectedFile.value = null
+        resetFormFields()
       } catch (e) {
         message.error('提交失败: ' + (e.message || '未知错误'))
       } finally {
@@ -283,16 +374,33 @@ export default {
       }
     }
 
+    const resetFormFields = () => {
+      selectedFile.value = null
+      pyScriptFile.value = null
+      pyZipFile.value = null
+    }
+
     const resetForm = () => {
       formRef.value?.reset()
-      selectedFile.value = null
+      resetFormFields()
     }
 
     onMounted(loadDeps)
 
+    const loadPySparkZips = async () => {
+      try {
+        const res = await getPySparkZipList()
+        pySparkZipList.value = res.data || []
+      } catch (e) { console.error('加载 PySpark 包失败', e) }
+    }
+
+    onMounted(loadPySparkZips)
+
     return {
-      formRef, fileInput, form, submitting, depList, selectedFile, dragOver, jsonExtensions,
-      handleDrop, handleFileSelect, formatSize, handleSubmit, resetForm
+      formRef, fileInput, pyScriptInput, form, submitting, depList, pySparkZipList,
+      selectedFile, dragOver, pyScriptFile, pyDragOver, jsonExtensions,
+      handleDrop, handleFileSelect, handlePyDrop, handlePyScriptSelect,
+      formatSize, handleSubmit, resetForm
     }
   }
 }

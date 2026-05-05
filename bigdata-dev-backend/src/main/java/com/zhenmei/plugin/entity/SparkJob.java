@@ -14,7 +14,13 @@ public class SparkJob {
 
     private String jobName;
 
+    private String jobType;
+
     private String jarPath;
+
+    private String scriptPath;
+
+    private String pyZipPath;
 
     private String mainClass;
 

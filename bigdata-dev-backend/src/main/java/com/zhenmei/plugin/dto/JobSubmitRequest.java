@@ -6,6 +6,7 @@ import lombok.Data;
 public class JobSubmitRequest {
 
     private String jobName;
+    private String jobType;
     private String mainClass;
     private String appArgs;
     private String sparkProperties;
@@ -17,4 +18,5 @@ public class JobSubmitRequest {
     private Integer executorCores;
     private Integer numExecutors;
     private String dependencyIds;
+    private Long pySparkZipId;
 }

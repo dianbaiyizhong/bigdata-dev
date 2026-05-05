@@ -6,7 +6,7 @@ import com.zhenmei.plugin.entity.SparkJob;
 
 public interface SparkJobService {
 
-    SparkJob submitJob(JobSubmitRequest request, String jarPath);
+    SparkJob submitJob(JobSubmitRequest request, String jarPath, String scriptPath);
 
     SparkJob getJobById(Long id);
 

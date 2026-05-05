@@ -36,6 +36,13 @@
           color="primary"
           @click="switchTab('/dependency')"
         />
+        <v-list-item
+          prepend-icon="mdi-language-python"
+          title="PySpark包"
+          :active="activePath === '/pyspark'"
+          color="primary"
+          @click="switchTab('/pyspark')"
+        />
       </v-list>
     </v-navigation-drawer>
 
@@ -65,6 +72,7 @@
         <JobSubmit v-show="activePath === '/job/submit'" />
         <JobList v-show="activePath === '/job/list'" />
         <DependencyManage v-show="activePath === '/dependency'" />
+        <PySparkManage v-show="activePath === '/pyspark'" />
       </div>
     </v-main>
 
@@ -100,16 +108,18 @@ import { useRouter, useRoute } from 'vue-router'
 import JobSubmit from './views/JobSubmit.vue'
 import JobList from './views/JobList.vue'
 import DependencyManage from './views/DependencyManage.vue'
+import PySparkManage from './views/PySparkManage.vue'
 
 const routeMeta = {
   '/job/submit': { title: '提交任务', icon: 'mdi-upload' },
   '/job/list': { title: '任务列表', icon: 'mdi-format-list-bulleted' },
-  '/dependency': { title: '依赖管理', icon: 'mdi-package-variant-closed' }
+  '/dependency': { title: '依赖管理', icon: 'mdi-package-variant-closed' },
+  '/pyspark': { title: 'PySpark包', icon: 'mdi-language-python' }
 }
 
 export default {
   name: 'App',
-  components: { JobSubmit, JobList, DependencyManage },
+  components: { JobSubmit, JobList, DependencyManage, PySparkManage },
   setup() {
     const router = useRouter()
     const route = useRoute()

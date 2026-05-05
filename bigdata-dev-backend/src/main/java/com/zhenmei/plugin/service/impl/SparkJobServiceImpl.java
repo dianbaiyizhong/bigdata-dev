@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhenmei.plugin.config.SparkConfig;
 import com.zhenmei.plugin.dto.JobSubmitRequest;
 import com.zhenmei.plugin.entity.DependencyJar;
+import com.zhenmei.plugin.entity.PySparkZip;
 import com.zhenmei.plugin.entity.SparkJob;
 import com.zhenmei.plugin.mapper.SparkJobMapper;
 import com.zhenmei.plugin.service.DependencyService;
+import com.zhenmei.plugin.service.PySparkZipService;
 import com.zhenmei.plugin.service.SparkJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +36,26 @@ public class SparkJobServiceImpl implements SparkJobService {
     private final SparkJobMapper sparkJobMapper;
     private final DependencyService dependencyService;
     private final SparkConfig sparkConfig;
+    private final PySparkZipService pySparkZipService;
 
     @Override
-    public SparkJob submitJob(JobSubmitRequest request, String jarPath) {
+    public SparkJob submitJob(JobSubmitRequest request, String jarPath, String scriptPath) {
+        boolean isPython = "PYTHON".equalsIgnoreCase(request.getJobType());
+
+        String pyZipPath = null;
+        if (isPython && request.getPySparkZipId() != null) {
+            PySparkZip zip = pySparkZipService.getById(request.getPySparkZipId());
+            if (zip != null) {
+                pyZipPath = zip.getHdfsPath();
+            }
+        }
+
         SparkJob job = new SparkJob();
         job.setJobName(request.getJobName());
+        job.setJobType(StrUtil.blankToDefault(request.getJobType(), "JAR"));
         job.setJarPath(jarPath);
+        job.setScriptPath(scriptPath);
+        job.setPyZipPath(pyZipPath);
         job.setMainClass(request.getMainClass());
         job.setAppArgs(request.getAppArgs());
         job.setSparkProperties(request.getSparkProperties());
@@ -55,13 +71,28 @@ public class SparkJobServiceImpl implements SparkJobService {
         sparkJobMapper.insert(job);
 
         try {
-            SparkLauncher launcher = new SparkLauncher()
-                    .setAppResource(jarPath)
-                    .setMainClass(request.getMainClass())
-                    .setMaster(job.getMaster())
-                    .setDeployMode(job.getDeployMode())
-                    .setAppName(request.getJobName())
-                    .setVerbose(true);
+            SparkLauncher launcher;
+
+            if (isPython) {
+                launcher = new SparkLauncher()
+                        .setAppResource(scriptPath)
+                        .setMaster(job.getMaster())
+                        .setDeployMode(job.getDeployMode())
+                        .setAppName(request.getJobName())
+                        .setVerbose(true);
+
+                if (StrUtil.isNotBlank(pyZipPath)) {
+                    launcher.addPyFile(pyZipPath);
+                }
+            } else {
+                launcher = new SparkLauncher()
+                        .setAppResource(jarPath)
+                        .setMainClass(request.getMainClass())
+                        .setMaster(job.getMaster())
+                        .setDeployMode(job.getDeployMode())
+                        .setAppName(request.getJobName())
+                        .setVerbose(true);
+            }
 
             if (StrUtil.isNotBlank(sparkConfig.getSparkHome())) {
                 launcher.setSparkHome(sparkConfig.getSparkHome());

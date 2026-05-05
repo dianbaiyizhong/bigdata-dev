@@ -21,12 +21,15 @@ public class SparkJobController {
     private final SparkJobService sparkJobService;
 
     private static final String JAR_DIR = FileUtil.getTmpDirPath() + File.separator+ "plugin-app-jars" + File.separator;
+    private static final String SCRIPT_DIR = FileUtil.getTmpDirPath() + File.separator+ "plugin-app-scripts" + File.separator;
 
     @PostMapping("/submit")
     public ApiResponse<SparkJob> submit(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "pyScript", required = false) MultipartFile pyScript,
             @RequestParam String jobName,
-            @RequestParam String mainClass,
+            @RequestParam String jobType,
+            @RequestParam(required = false) String mainClass,
             @RequestParam(required = false) String appArgs,
             @RequestParam(required = false) String deployMode,
             @RequestParam(required = false) String master,
@@ -36,17 +39,12 @@ public class SparkJobController {
             @RequestParam(required = false) Integer executorCores,
             @RequestParam(required = false) Integer numExecutors,
             @RequestParam(required = false) String sparkProperties,
-            @RequestParam(required = false) String dependencyIds) throws IOException {
-
-        File dir = new File(JAR_DIR);
-        if (!dir.exists()) dir.mkdirs();
-
-        String savedName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        File dest = new File(dir, savedName);
-        file.transferTo(dest);
+            @RequestParam(required = false) String dependencyIds,
+            @RequestParam(required = false) Long pySparkZipId) throws IOException {
 
         JobSubmitRequest request = new JobSubmitRequest();
         request.setJobName(jobName);
+        request.setJobType(jobType);
         request.setMainClass(mainClass);
         request.setAppArgs(appArgs);
         request.setDeployMode(deployMode);
@@ -58,8 +56,30 @@ public class SparkJobController {
         request.setNumExecutors(numExecutors);
         request.setSparkProperties(sparkProperties);
         request.setDependencyIds(dependencyIds);
+        request.setPySparkZipId(pySparkZipId);
 
-        return ApiResponse.success(sparkJobService.submitJob(request, dest.getAbsolutePath()));
+        String jarPath = null;
+        String scriptPath = null;
+
+        if (file != null && !file.isEmpty()) {
+            File dir = new File(JAR_DIR);
+            if (!dir.exists()) dir.mkdirs();
+            String savedName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            File dest = new File(dir, savedName);
+            file.transferTo(dest);
+            jarPath = dest.getAbsolutePath();
+        }
+
+        if (pyScript != null && !pyScript.isEmpty()) {
+            File dir = new File(SCRIPT_DIR);
+            if (!dir.exists()) dir.mkdirs();
+            String savedName = System.currentTimeMillis() + "_" + pyScript.getOriginalFilename();
+            File dest = new File(dir, savedName);
+            pyScript.transferTo(dest);
+            scriptPath = dest.getAbsolutePath();
+        }
+
+        return ApiResponse.success(sparkJobService.submitJob(request, jarPath, scriptPath));
     }
 
     @GetMapping("/{id}")
