@@ -27,6 +27,9 @@
           <template #item.errorMsg="{ item }">
             <span class="text-truncate d-inline-block" style="max-width: 150px">{{ item.errorMsg || '-' }}</span>
           </template>
+          <template #item.createTime="{ item }">
+            {{ formatTime(item.createTime) }}
+          </template>
           <template #item.actions="{ item }">
             <v-btn
               color="error"
@@ -132,9 +135,14 @@ export default {
       return map[status] || status
     }
 
+    const formatTime = (t) => {
+      if (!t) return '-'
+      return t.replace('T', ' ')
+    }
+
     onMounted(loadData)
 
-    return { loading, tableData, headers, page, size, total, loadData, handleKill, statusColor, statusLabel }
+    return { loading, tableData, headers, page, size, total, loadData, handleKill, statusColor, statusLabel, formatTime }
   }
 }
 </script>

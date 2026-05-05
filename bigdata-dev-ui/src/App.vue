@@ -18,31 +18,53 @@
         <v-list-item
           prepend-icon="mdi-upload"
           title="提交任务"
-          :to="{ path: '/job/submit' }"
-          :active="$route.path === '/job/submit'"
+          :active="activePath === '/job/submit'"
           color="primary"
+          @click="switchTab('/job/submit')"
         />
         <v-list-item
           prepend-icon="mdi-format-list-bulleted"
           title="任务列表"
-          :to="{ path: '/job/list' }"
-          :active="$route.path === '/job/list'"
+          :active="activePath === '/job/list'"
           color="primary"
+          @click="switchTab('/job/list')"
         />
         <v-list-item
           prepend-icon="mdi-package-variant-closed"
           title="依赖管理"
-          :to="{ path: '/dependency' }"
-          :active="$route.path === '/dependency'"
+          :active="activePath === '/dependency'"
           color="primary"
+          @click="switchTab('/dependency')"
         />
       </v-list>
     </v-navigation-drawer>
 
-    <v-main>
-      <v-container fluid class="pa-6">
-        <router-view />
-      </v-container>
+    <v-main style="display: flex; flex-direction: column; background: #f5f5f5;">
+      <div class="tab-bar">
+        <div class="tab-bar-inner">
+          <div
+            v-for="tab in tabs"
+            :key="tab.path"
+            class="tab-item"
+            :class="{ active: activePath === tab.path }"
+            @click="switchTab(tab.path)"
+          >
+            <span>{{ tab.title }}</span>
+            <v-icon
+              v-if="tabs.length > 1"
+              size="16"
+              class="ml-2 tab-close"
+              @click.stop="closeTab(tab)"
+              >mdi-close</v-icon>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex: 1; padding: 24px; overflow-y: auto;">
+        <JobSubmit v-show="activePath === '/job/submit'" />
+        <JobList v-show="activePath === '/job/list'" />
+        <DependencyManage v-show="activePath === '/dependency'" />
+      </div>
     </v-main>
 
     <v-snackbar
@@ -72,12 +94,59 @@
 </template>
 
 <script>
-import { reactive, provide } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, provide, ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import JobSubmit from './views/JobSubmit.vue'
+import JobList from './views/JobList.vue'
+import DependencyManage from './views/DependencyManage.vue'
+
+const routeTitleMap = {
+  '/job/submit': '提交任务',
+  '/job/list': '任务列表',
+  '/dependency': '依赖管理'
+}
 
 export default {
   name: 'App',
+  components: { JobSubmit, JobList, DependencyManage },
   setup() {
+    const router = useRouter()
+    const route = useRoute()
+    const tabs = ref([])
+    const activePath = ref(route.path === '/' ? '/job/submit' : route.path)
+
+    const switchTab = (path) => {
+      activePath.value = path
+      router.replace(path)
+      if (!tabs.value.find(t => t.path === path)) {
+        tabs.value.push({ path, title: routeTitleMap[path] || path })
+      }
+    }
+
+    const closeTab = (tab) => {
+      const idx = tabs.value.findIndex(t => t.path === tab.path)
+      tabs.value.splice(idx, 1)
+      if (activePath.value === tab.path) {
+        const next = tabs.value[idx] || tabs.value[tabs.value.length - 1]
+        if (next) {
+          activePath.value = next.path
+          router.replace(next.path)
+        }
+      }
+    }
+
+    watch(() => route.path, (path) => {
+      if (path !== '/') {
+        activePath.value = path
+        if (!tabs.value.find(t => t.path === path)) {
+          tabs.value.push({ path, title: routeTitleMap[path] || path })
+        }
+      }
+    })
+
+    // init first tab
+    tabs.value = [{ path: '/job/submit', title: '提交任务' }]
+
     const snackbar = reactive({
       show: false,
       text: '',
@@ -113,7 +182,7 @@ export default {
       confirm
     })
 
-    return { snackbar, confirmDialog }
+    return { snackbar, confirmDialog, tabs, activePath, switchTab, closeTab }
   }
 }
 </script>
@@ -123,5 +192,60 @@ export default {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+.tab-bar {
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tab-bar-inner {
+  display: inline-flex;
+  padding: 0 4px;
+}
+
+.tab-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  border-right: 1px solid #e0e0e0;
+  user-select: none;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.tab-item:hover {
+  background: #e8e8e8;
+}
+
+.tab-item.active {
+  background: #f5f5f5;
+  color: #1976D2;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1976D2;
+}
+
+.tab-close {
+  opacity: 0.4;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.tab-close:hover {
+  opacity: 1;
+  color: #e53935;
 }
 </style>

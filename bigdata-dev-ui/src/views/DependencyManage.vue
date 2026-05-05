@@ -77,6 +77,9 @@
           <template #item.description="{ item }">
             <span class="text-truncate d-inline-block" style="max-width: 200px">{{ item.description || '-' }}</span>
           </template>
+          <template #item.createTime="{ item }">
+            {{ formatTime(item.createTime) }}
+          </template>
           <template #item.actions="{ item }">
             <v-btn color="primary" size="small" variant="tonal" class="mr-2" @click="openJarDialog(item)">JAR管理</v-btn>
             <v-btn color="error" size="small" variant="tonal" @click="handleDelete(item)">删除</v-btn>
@@ -156,6 +159,9 @@
             </template>
             <template #item.fileSize="{ item }">
               {{ item.fileSize ? formatSize(item.fileSize) : '-' }}
+            </template>
+            <template #item.createTime="{ item }">
+              {{ formatTime(item.createTime) }}
             </template>
             <template #item.actions="{ item }">
               <v-btn color="error" size="small" variant="tonal" @click="deleteJar(item.id)">删除</v-btn>
@@ -328,6 +334,11 @@ export default {
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
     }
 
+    const formatTime = (t) => {
+      if (!t) return '-'
+      return t.replace('T', ' ')
+    }
+
     onMounted(loadList)
 
     return {
@@ -335,7 +346,7 @@ export default {
       loading, tableData, depHeaders, page, size, total, keyword, loadList, handleDelete,
       jarDialogVisible, currentDep, jarUploading, jarsLoading,
       currentJars, pendingFiles, jarHeaders,
-      openJarDialog, closeJarDialog, uploadJarsToDep, deleteJar, formatSize
+      openJarDialog, closeJarDialog, uploadJarsToDep, deleteJar, formatSize, formatTime
     }
   }
 }
