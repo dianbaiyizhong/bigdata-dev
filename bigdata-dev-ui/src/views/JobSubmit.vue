@@ -13,15 +13,40 @@
             density="comfortable"
           />
 
-          <v-file-input
-            v-model="selectedFile"
-            label="上传JAR文件"
-            accept=".jar"
-            prepend-icon="mdi-upload"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
+          <div class="mb-3">
+            <label class="text-body-2 mb-1 d-block">上传JAR文件</label>
+            <div
+              class="drop-zone"
+              :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': selectedFile }"
+              @dragover.prevent="dragOver = true"
+              @dragleave.prevent="dragOver = false"
+              @drop.prevent="handleDrop"
+              @click="$refs.fileInput.click()"
+            >
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".jar"
+                hidden
+                @change="handleFileSelect"
+              />
+              <template v-if="selectedFile">
+                <v-icon color="primary" size="24" class="mr-2">mdi-file-code</v-icon>
+                <span class="text-body-2">{{ selectedFile.name }}</span>
+                <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(selectedFile.size) }})</span>
+                <v-icon
+                  size="18"
+                  class="ml-3"
+                  color="grey"
+                  @click.stop="selectedFile = null"
+                >mdi-close</v-icon>
+              </template>
+              <template v-else>
+                <v-icon color="grey" size="40" class="mb-2">mdi-cloud-upload</v-icon>
+                <span class="text-body-2 text-medium-emphasis">拖拽 JAR，PY，ZIP 文件到此处，或点击选择</span>
+              </template>
+            </div>
+          </div>
 
           <v-text-field
             v-model="form.mainClass"
@@ -162,9 +187,11 @@ export default {
   name: 'JobSubmit',
   setup() {
     const formRef = ref(null)
+    const fileInput = ref(null)
     const submitting = ref(false)
     const depList = ref([])
     const selectedFile = ref(null)
+    const dragOver = ref(false)
     const message = useMessage()
 
     const form = reactive({
@@ -191,6 +218,27 @@ export default {
           } catch (e) { dep._jarCount = 0 }
         }
       } catch (e) { console.error('加载依赖失败', e) }
+    }
+
+    const handleDrop = (e) => {
+      dragOver.value = false
+      const files = e.dataTransfer?.files
+      if (files && files.length > 0) {
+        selectedFile.value = files[0]
+      } else {
+        message.warning('请选择 .jar .py .zip 文件')
+      }
+    }
+
+    const handleFileSelect = (e) => {
+      const file = e.target.files?.[0]
+      if (file) selectedFile.value = file
+    }
+
+    const formatSize = (bytes) => {
+      if (!bytes) return '0 B'
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
     }
 
     const handleSubmit = async () => {
@@ -234,9 +282,39 @@ export default {
     onMounted(loadDeps)
 
     return {
-      formRef, form, submitting, depList, selectedFile,
-      handleSubmit, resetForm
+      formRef, fileInput, form, submitting, depList, selectedFile, dragOver,
+      handleDrop, handleFileSelect, formatSize, handleSubmit, resetForm
     }
   }
 }
 </script>
+
+<style scoped>
+.drop-zone {
+  border: 2px dashed #bbb;
+  border-radius: 8px;
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-zone:hover {
+  border-color: #1976D2;
+  background: #f5f5f5;
+}
+
+.drop-zone--active {
+  border-color: #1976D2;
+  background: #e3f2fd;
+}
+
+.drop-zone--has-file {
+  flex-direction: row;
+  padding: 16px 24px;
+}
+</style>

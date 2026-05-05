@@ -1,6 +1,15 @@
 <template>
   <div class="job-list">
-    <h2 class="mb-5">Spark 任务列表</h2>
+    <div class="d-flex align-center mb-5">
+      <h2 class="me-3">Spark 任务列表</h2>
+      <v-btn
+        icon="mdi-refresh"
+        size="small"
+        variant="text"
+        :loading="loading"
+        @click="loadData"
+      />
+    </div>
     <v-card>
       <v-card-text>
         <v-data-table
@@ -21,11 +30,52 @@
               {{ statusLabel(item.status) }}
             </v-chip>
           </template>
+          <template #item.appId="{ item }">
+            <v-tooltip location="top" :text="item.appId || '-'">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.appId || '-' }}</span>
+              </template>
+            </v-tooltip>
+          </template>
+          <template #item.jobName="{ item }">
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.jobName }}</span>
+              </template>
+              <span>{{ item.jobName }}</span>
+            </v-tooltip>
+          </template>
           <template #item.mainClass="{ item }">
-            <span class="text-truncate d-inline-block" style="max-width: 180px">{{ item.mainClass }}</span>
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.mainClass }}</span>
+              </template>
+              <span>{{ item.mainClass }}</span>
+            </v-tooltip>
+          </template>
+          <template #item.master="{ item }">
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.master }}</span>
+              </template>
+              <span>{{ item.master }}</span>
+            </v-tooltip>
+          </template>
+          <template #item.deployMode="{ item }">
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.deployMode }}</span>
+              </template>
+              <span>{{ item.deployMode }}</span>
+            </v-tooltip>
           </template>
           <template #item.errorMsg="{ item }">
-            <span class="text-truncate d-inline-block" style="max-width: 150px">{{ item.errorMsg || '-' }}</span>
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="d-block text-truncate">{{ item.errorMsg || '-' }}</span>
+              </template>
+              <span>{{ item.errorMsg || '-' }}</span>
+            </v-tooltip>
           </template>
           <template #item.createTime="{ item }">
             {{ formatTime(item.createTime) }}
@@ -91,14 +141,15 @@ export default {
 
     const headers = [
       { title: 'ID', key: 'id', width: 60 },
-      { title: '任务名称', key: 'jobName', minWidth: 150 },
-      { title: '主类', key: 'mainClass', minWidth: 180 },
-      { title: 'Master', key: 'master', width: 100 },
-      { title: '部署模式', key: 'deployMode', width: 90 },
-      { title: '状态', key: 'status', width: 100 },
-      { title: '错误信息', key: 'errorMsg', minWidth: 150 },
-      { title: '创建时间', key: 'createTime', width: 170 },
-      { title: '操作', key: 'actions', width: 120 }
+      { title: 'AppId', key: 'appId', minWidth: 160 },
+      { title: '任务名称', key: 'jobName', minWidth: 120 },
+      { title: '主类', key: 'mainClass', minWidth: 150 },
+      { title: 'Master', key: 'master', minWidth: 100 },
+      { title: '部署模式', key: 'deployMode', minWidth: 90 },
+      { title: '状态', key: 'status', minWidth: 80 },
+      { title: '错误信息', key: 'errorMsg', minWidth: 120 },
+      { title: '创建时间', key: 'createTime', minWidth: 150 },
+      { title: '操作', key: 'actions', minWidth: 80 }
     ]
 
     const loadData = async () => {
