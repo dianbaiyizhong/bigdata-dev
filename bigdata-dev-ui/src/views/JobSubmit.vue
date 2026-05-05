@@ -45,6 +45,7 @@
                 <v-icon color="grey" size="40" class="mb-2">mdi-cloud-upload</v-icon>
                 <span class="text-body-2 text-medium-emphasis">拖拽 JAR，PY，ZIP 文件到此处，或点击选择</span>
               </template>
+              <Icon icon="streamline-logos:spark-logo-solid" class="spark-icon" />
             </div>
           </div>
 
@@ -179,12 +180,14 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import { submitJob } from '../api/job'
 import { getDependencyList, getDependencyJars } from '../api/dependency'
 import { useMessage } from '../composables/message'
 
 export default {
   name: 'JobSubmit',
+  components: { Icon },
   setup() {
     const formRef = ref(null)
     const fileInput = ref(null)
@@ -301,6 +304,8 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .drop-zone:hover {
@@ -316,5 +321,20 @@ export default {
 .drop-zone--has-file {
   flex-direction: row;
   padding: 16px 24px;
+}
+
+.spark-icon {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  opacity: 0.15;
+  transition: opacity 0.2s;
+  font-size: 48px;
+  color: #E25A1C;
+}
+
+.drop-zone:hover .spark-icon,
+.drop-zone--active .spark-icon {
+  opacity: 0.3;
 }
 </style>
