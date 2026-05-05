@@ -1,3 +1,7 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+create database bigdata_dev_db;
+use bigdata_dev_db;
 CREATE TABLE IF NOT EXISTS t_spark_job (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     job_name VARCHAR(255),

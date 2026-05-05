@@ -3,16 +3,12 @@ server:
 
 spring:
   application:
-    name: bigdata-plugin
+    name: bigdata-dev
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://mysql:3306/bigdata_plugin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3306/bigdata_dev_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: root
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
   servlet:
     multipart:
       max-file-size: 500MB

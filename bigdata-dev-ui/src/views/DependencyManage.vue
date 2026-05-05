@@ -1,100 +1,173 @@
 <template>
   <div class="dependency-manage">
-    <h2 style="margin-bottom: 20px">依赖管理</h2>
+    <h2 class="mb-5">依赖管理</h2>
 
-    <el-card style="margin-bottom: 20px">
-      <h3 style="margin-bottom: 16px">新建依赖组</h3>
-      <el-form :inline="true" :model="newDepForm">
-        <el-form-item label="名称" required>
-          <el-input v-model="newDepForm.name" placeholder="例如: MySQL Connector" style="width: 240px" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="newDepForm.description" placeholder="描述（可选）" style="width: 300px" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="createDep" :loading="creating">创建依赖组</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <v-card class="mb-5">
+      <v-card-text>
+        <h3 class="mb-4">新建依赖组</h3>
+        <v-row align="center">
+          <v-col cols="auto">
+            <v-text-field
+              v-model="newDepForm.name"
+              label="名称"
+              placeholder="例如: MySQL Connector"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              style="width: 240px"
+            />
+          </v-col>
+          <v-col cols="auto">
+            <v-text-field
+              v-model="newDepForm.description"
+              label="描述"
+              placeholder="描述（可选）"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              style="width: 300px"
+            />
+          </v-col>
+          <v-col cols="auto">
+            <v-btn color="primary" :loading="creating" @click="createDep">创建依赖组</v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
-    <el-card>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
-        <h3>依赖组列表</h3>
-        <el-input v-model="keyword" placeholder="搜索" style="width: 260px" clearable @clear="loadList" @keyup.enter="loadList">
-          <template #append>
-            <el-button @click="loadList"><el-icon><Search /></el-icon></el-button>
+    <v-card>
+      <v-card-text>
+        <v-row align="center" class="mb-4">
+          <v-col>
+            <h3>依赖组列表</h3>
+          </v-col>
+          <v-col cols="auto">
+            <v-text-field
+              v-model="keyword"
+              label="搜索"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              style="width: 260px"
+              @click:clear="loadList"
+              @keyup.enter="loadList"
+            >
+              <template #append-inner>
+                <v-btn icon size="small" variant="text" @click="loadList">
+                  <v-icon>mdi-magnify</v-icon>
+                </v-btn>
+              </template>
+            </v-text-field>
+          </v-col>
+        </v-row>
+
+        <v-data-table
+          :items="tableData"
+          :headers="depHeaders"
+          :loading="loading"
+          hover
+          density="comfortable"
+          class="elevation-0"
+          hide-default-footer
+        >
+          <template #item._jarCount="{ item }">
+            <v-chip size="small" label>{{ item._jarCount || 0 }}</v-chip>
           </template>
-        </el-input>
-      </div>
-
-      <el-table :data="tableData" v-loading="loading" stripe row-key="id">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="名称" min-width="200" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="JAR数量" width="100">
-          <template #default="{ row }">
-            <el-tag size="small">{{ row._jarCount || 0 }}</el-tag>
+          <template #item.description="{ item }">
+            <span class="text-truncate d-inline-block" style="max-width: 200px">{{ item.description || '-' }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="openJarDialog(row)">JAR管理</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          <template #item.actions="{ item }">
+            <v-btn color="primary" size="small" variant="tonal" class="mr-2" @click="openJarDialog(item)">JAR管理</v-btn>
+            <v-btn color="error" size="small" variant="tonal" @click="handleDelete(item)">删除</v-btn>
           </template>
-        </el-table-column>
-      </el-table>
+        </v-data-table>
 
-      <div style="margin-top: 16px; text-align: right">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="loadList"
-          @current-change="loadList"
-        />
-      </div>
-    </el-card>
+        <v-row class="mt-4" justify="end" align="center">
+          <v-col cols="auto">
+            <v-select
+              v-model="size"
+              :items="[10, 20, 50]"
+              label="每页条数"
+              density="compact"
+              variant="outlined"
+              hide-details
+              style="width: 120px"
+              @update:model-value="loadList"
+            />
+          </v-col>
+          <v-col cols="auto">
+            <span class="text-body-2 text-medium-emphasis mr-3">共 {{ total }} 条</span>
+          </v-col>
+          <v-col cols="auto">
+            <v-pagination
+              v-model="page"
+              :length="Math.ceil(total / size) || 1"
+              :total-visible="5"
+              density="comfortable"
+              @update:model-value="loadList"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
     <!-- JAR管理弹窗 -->
-    <el-dialog v-model="jarDialogVisible" :title="`${currentDep?.name} - JAR管理`" width="700px" destroy-on-close>
-      <div style="margin-bottom: 16px">
-        <el-upload
-          ref="jarUploadRef"
-          :auto-upload="false"
-          multiple
-          :on-change="handleJarChange"
-          :on-remove="handleJarRemove"
-          accept=".jar"
-          drag
-        >
-          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-          <div class="el-upload__text">拖拽 JAR 文件到此处或 <em>点击上传</em></div>
-        </el-upload>
-        <div style="margin-top: 12px; text-align: right">
-          <el-button type="primary" @click="uploadJarsToDep" :loading="jarUploading" :disabled="pendingFiles.length === 0">
-            确认上传 ({{ pendingFiles.length }} 个文件)
-          </el-button>
-        </div>
-      </div>
-      <el-divider />
-      <el-table :data="currentJars" v-loading="jarsLoading" size="small" stripe empty-text="暂无JAR文件">
-        <el-table-column prop="name" label="文件名" show-overflow-tooltip />
-        <el-table-column label="大小" width="120">
-          <template #default="{ row }">
-            {{ row.fileSize ? formatSize(row.fileSize) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="上传时间" width="170" />
-        <el-table-column label="操作" width="80">
-          <template #default="{ row }">
-            <el-button type="danger" size="small" @click="deleteJar(row.id)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
+    <v-dialog v-model="jarDialogVisible" max-width="700" @update:model-value="!jarDialogVisible && closeJarDialog()">
+      <v-card>
+        <v-card-title class="text-h6">
+          {{ currentDep?.name }} - JAR管理
+        </v-card-title>
+        <v-card-text>
+          <v-file-input
+            v-model="pendingFiles"
+            label="拖拽 JAR 文件到此处或点击上传"
+            accept=".jar"
+            multiple
+            prepend-icon="mdi-upload"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          />
+          <div class="text-right">
+            <v-btn
+              color="primary"
+              :loading="jarUploading"
+              :disabled="!pendingFiles || pendingFiles.length === 0"
+              @click="uploadJarsToDep"
+            >
+              确认上传 ({{ pendingFiles?.length || 0 }} 个文件)
+            </v-btn>
+          </div>
+
+          <v-divider class="my-4" />
+
+          <v-data-table
+            :items="currentJars"
+            :headers="jarHeaders"
+            :loading="jarsLoading"
+            density="compact"
+            hover
+            class="elevation-0"
+            no-data-text="暂无JAR文件"
+          >
+            <template #item.name="{ item }">
+              <span class="text-truncate d-inline-block" style="max-width: 280px">{{ item.name }}</span>
+            </template>
+            <template #item.fileSize="{ item }">
+              {{ item.fileSize ? formatSize(item.fileSize) : '-' }}
+            </template>
+            <template #item.actions="{ item }">
+              <v-btn color="error" size="small" variant="tonal" @click="deleteJar(item.id)">删除</v-btn>
+            </template>
+          </v-data-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="jarDialogVisible = false">关闭</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -104,13 +177,14 @@ import {
   createDependency, getDependencyList, deleteDependency,
   uploadDependencyJars, getDependencyJars, deleteDependencyJar
 } from '../api/dependency'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useMessage } from '../composables/message'
 
 export default {
   name: 'DependencyManage',
   setup() {
     const creating = ref(false)
     const newDepForm = reactive({ name: '', description: '' })
+    const message = useMessage()
 
     const loading = ref(false)
     const tableData = ref([])
@@ -119,26 +193,40 @@ export default {
     const total = ref(0)
     const keyword = ref('')
 
-    // JAR弹窗
     const jarDialogVisible = ref(false)
     const currentDep = ref(null)
-    const jarUploadRef = ref(null)
     const jarUploading = ref(false)
     const jarsLoading = ref(false)
     const currentJars = ref([])
     const pendingFiles = ref([])
 
+    const depHeaders = [
+      { title: 'ID', key: 'id', width: 60 },
+      { title: '名称', key: 'name', minWidth: 200 },
+      { title: '描述', key: 'description', minWidth: 200 },
+      { title: 'JAR数量', key: '_jarCount', width: 100 },
+      { title: '创建时间', key: 'createTime', width: 170 },
+      { title: '操作', key: 'actions', width: 160 }
+    ]
+
+    const jarHeaders = [
+      { title: '文件名', key: 'name' },
+      { title: '大小', key: 'fileSize', width: 120 },
+      { title: '上传时间', key: 'createTime', width: 170 },
+      { title: '操作', key: 'actions', width: 80 }
+    ]
+
     const createDep = async () => {
-      if (!newDepForm.name) { ElMessage.warning('请输入依赖组名称'); return }
+      if (!newDepForm.name) { message.warning('请输入依赖组名称'); return }
       creating.value = true
       try {
         await createDependency(newDepForm.name, newDepForm.description)
-        ElMessage.success('创建成功')
+        message.success('创建成功')
         newDepForm.name = ''
         newDepForm.description = ''
         loadList()
       } catch (e) {
-        ElMessage.error('创建失败')
+        message.error('创建失败')
       } finally {
         creating.value = false
       }
@@ -147,13 +235,11 @@ export default {
     const openJarDialog = async (row) => {
       currentDep.value = row
       pendingFiles.value = []
-      jarUploadRef.value?.clearFiles()
       jarDialogVisible.value = true
       await loadJars()
     }
 
     const closeJarDialog = () => {
-      jarDialogVisible.value = false
       currentDep.value = null
       pendingFiles.value = []
     }
@@ -172,27 +258,18 @@ export default {
       }
     }
 
-    const handleJarChange = (file) => {
-      pendingFiles.value.push(file.raw)
-    }
-
-    const handleJarRemove = (file) => {
-      pendingFiles.value = pendingFiles.value.filter(f => f !== file.raw)
-    }
-
     const uploadJarsToDep = async () => {
-      if (!currentDep.value || pendingFiles.value.length === 0) return
+      if (!currentDep.value || !pendingFiles.value || pendingFiles.value.length === 0) return
       jarUploading.value = true
       try {
         const fd = new FormData()
         pendingFiles.value.forEach(f => fd.append('files', f))
         await uploadDependencyJars(currentDep.value.id, fd)
-        ElMessage.success(`成功上传 ${pendingFiles.value.length} 个文件`)
+        message.success(`成功上传 ${pendingFiles.value.length} 个文件`)
         pendingFiles.value = []
-        jarUploadRef.value?.clearFiles()
         await loadJars()
       } catch (e) {
-        ElMessage.error('上传失败')
+        message.error('上传失败')
       } finally {
         jarUploading.value = false
       }
@@ -200,12 +277,12 @@ export default {
 
     const deleteJar = async (jarId) => {
       try {
-        await ElMessageBox.confirm('确定要删除该JAR吗？', '确认', { type: 'warning' })
+        await message.confirm('确定要删除该JAR吗？')
         await deleteDependencyJar(jarId)
-        ElMessage.success('已删除')
+        message.success('已删除')
         await loadJars()
       } catch (e) {
-        if (e !== 'cancel') ElMessage.error('删除失败')
+        if (e !== 'cancel') message.error('删除失败')
       }
     }
 
@@ -218,7 +295,6 @@ export default {
           _jarCount: 0
         }))
         total.value = res.data.total || 0
-        // 加载每个依赖组的jar数量
         for (const dep of tableData.value) {
           try {
             const jRes = await getDependencyJars(dep.id)
@@ -228,7 +304,7 @@ export default {
           }
         }
       } catch (e) {
-        ElMessage.error('加载失败')
+        message.error('加载失败')
       } finally {
         loading.value = false
       }
@@ -236,12 +312,12 @@ export default {
 
     const handleDelete = async (row) => {
       try {
-        await ElMessageBox.confirm('确定要删除该依赖组及其所有JAR吗？', '确认操作', { type: 'warning' })
+        await message.confirm('确定要删除该依赖组及其所有JAR吗？')
         await deleteDependency(row.id)
-        ElMessage.success('已删除')
+        message.success('已删除')
         loadList()
       } catch (e) {
-        if (e !== 'cancel') ElMessage.error('删除失败')
+        if (e !== 'cancel') message.error('删除失败')
       }
     }
 
@@ -256,11 +332,10 @@ export default {
 
     return {
       creating, newDepForm, createDep,
-      loading, tableData, page, size, total, keyword, loadList, handleDelete,
-      jarDialogVisible, currentDep, jarUploadRef, jarUploading, jarsLoading,
-      currentJars, pendingFiles,
-      openJarDialog, closeJarDialog, handleJarChange, handleJarRemove,
-      uploadJarsToDep, deleteJar, formatSize
+      loading, tableData, depHeaders, page, size, total, keyword, loadList, handleDelete,
+      jarDialogVisible, currentDep, jarUploading, jarsLoading,
+      currentJars, pendingFiles, jarHeaders,
+      openJarDialog, closeJarDialog, uploadJarsToDep, deleteJar, formatSize
     }
   }
 }

@@ -1,79 +1,154 @@
 <template>
   <div class="job-submit">
-    <h2 style="margin-bottom: 20px">提交 Spark 任务</h2>
-    <el-card>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px" size="default">
-        <el-form-item label="任务名称" prop="jobName">
-          <el-input v-model="form.jobName" placeholder="请输入任务名称" />
-        </el-form-item>
-        <el-form-item label="上传JAR" required>
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
+    <h2 class="mb-5">提交 Spark 任务</h2>
+    <v-card>
+      <v-card-text>
+        <v-form ref="formRef" @submit.prevent="handleSubmit">
+          <v-text-field
+            v-model="form.jobName"
+            label="任务名称"
+            placeholder="请输入任务名称"
+            :rules="[v => !!v || '请输入任务名称']"
+            variant="outlined"
+            density="comfortable"
+          />
+
+          <v-file-input
+            v-model="selectedFile"
+            label="上传JAR文件"
             accept=".jar"
-            drag
-          >
-            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-            <div class="el-upload__text">拖拽 JAR 文件到此处或 <em>点击上传</em></div>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="主类" prop="mainClass">
-          <el-input v-model="form.mainClass" placeholder="com.example.MainClass" />
-        </el-form-item>
-        <el-form-item label="应用参数">
-          <el-input v-model="form.appArgs" type="textarea" :rows="2" placeholder="程序参数，空格分隔" />
-        </el-form-item>
-        <el-divider content-position="left">资源配置</el-divider>
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="Driver内存(MB)">
-              <el-input-number v-model="form.driverMemory" :min="256" :step="256" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="Driver核数">
-              <el-input-number v-model="form.driverCores" :min="1" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="Executor数量">
-              <el-input-number v-model="form.numExecutors" :min="1" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="Executor内存(MB)">
-              <el-input-number v-model="form.executorMemory" :min="256" :step="256" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="Executor核数">
-              <el-input-number v-model="form.executorCores" :min="1" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-divider content-position="left">Spark 配置</el-divider>
-        <el-form-item label="自定义配置">
-          <el-input v-model="form.sparkProperties" type="textarea" :rows="4"
-            placeholder="spark.sql.shuffle.partitions=200&#10;spark.default.parallelism=100" />
-        </el-form-item>
-        <el-divider content-position="left">依赖组</el-divider>
-        <el-form-item label="选择依赖组">
-          <el-select v-model="form.dependencyIds" multiple filterable placeholder="选择依赖组（该组所有JAR加入classpath）" style="width: 100%">
-            <el-option v-for="item in depList" :key="item.id"
-              :label="`${item.name} (${item._jarCount || 0} 个JAR)`" :value="String(item.id)" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">提交任务</el-button>
-          <el-button @click="resetForm">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+            prepend-icon="mdi-upload"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model="form.mainClass"
+            label="主类"
+            placeholder="com.example.MainClass"
+            :rules="[v => !!v || '请输入主类名']"
+            variant="outlined"
+            density="comfortable"
+          />
+
+          <v-textarea
+            v-model="form.appArgs"
+            label="应用参数"
+            placeholder="程序参数，空格分隔"
+            rows="2"
+            variant="outlined"
+            density="comfortable"
+          />
+
+          <v-divider class="mb-4">
+            <span class="text-caption text-medium-emphasis">资源配置</span>
+          </v-divider>
+
+          <v-row>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="form.driverMemory"
+                label="Driver内存(MB)"
+                type="number"
+                :min="256"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="form.driverCores"
+                label="Driver核数"
+                type="number"
+                :min="1"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="form.numExecutors"
+                label="Executor数量"
+                type="number"
+                :min="1"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+          </v-row>
+
+          <v-row>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="form.executorMemory"
+                label="Executor内存(MB)"
+                type="number"
+                :min="256"
+                :step="256"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="form.executorCores"
+                label="Executor核数"
+                type="number"
+                :min="1"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+          </v-row>
+
+          <v-divider class="mb-4">
+            <span class="text-caption text-medium-emphasis">Spark 配置</span>
+          </v-divider>
+
+          <v-textarea
+            v-model="form.sparkProperties"
+            label="自定义配置"
+            placeholder="spark.sql.shuffle.partitions=200&#10;spark.default.parallelism=100"
+            rows="4"
+            variant="outlined"
+            density="comfortable"
+          />
+
+          <v-divider class="mb-4">
+            <span class="text-caption text-medium-emphasis">依赖组</span>
+          </v-divider>
+
+          <v-select
+            v-model="form.dependencyIds"
+            :items="depList"
+            :item-title="(item) => `${item.name} (${item._jarCount || 0} 个JAR)`"
+            item-value="id"
+            multiple
+            chips
+            label="选择依赖组"
+            hint="选择依赖组（该组所有JAR加入classpath）"
+            persistent-hint
+            variant="outlined"
+            density="comfortable"
+          />
+
+          <div class="mt-4">
+            <v-btn
+              color="primary"
+              type="submit"
+              :loading="submitting"
+              class="mr-3"
+            >
+              提交任务
+            </v-btn>
+            <v-btn @click="resetForm">
+              重置
+            </v-btn>
+          </div>
+        </v-form>
+      </v-card-text>
+    </v-card>
   </div>
 </template>
 
@@ -81,16 +156,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { submitJob } from '../api/job'
 import { getDependencyList, getDependencyJars } from '../api/dependency'
-import { ElMessage } from 'element-plus'
+import { useMessage } from '../composables/message'
 
 export default {
   name: 'JobSubmit',
   setup() {
     const formRef = ref(null)
-    const uploadRef = ref(null)
     const submitting = ref(false)
     const depList = ref([])
     const selectedFile = ref(null)
+    const message = useMessage()
 
     const form = reactive({
       jobName: '',
@@ -104,18 +179,6 @@ export default {
       sparkProperties: '',
       dependencyIds: []
     })
-
-    const rules = {
-      jobName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-      mainClass: [{ required: true, message: '请输入主类名', trigger: 'blur' }]
-    }
-
-    const handleFileChange = (file) => {
-      selectedFile.value = file.raw
-    }
-    const handleFileRemove = () => {
-      selectedFile.value = null
-    }
 
     const loadDeps = async () => {
       try {
@@ -132,11 +195,11 @@ export default {
 
     const handleSubmit = async () => {
       if (!selectedFile.value) {
-        ElMessage.warning('请上传JAR文件')
+        message.warning('请上传JAR文件')
         return
       }
-      const valid = await formRef.value.validate().catch(() => false)
-      if (!valid) return
+      const result = await formRef.value.validate()
+      if (!result.valid) return
 
       submitting.value = true
       try {
@@ -154,27 +217,25 @@ export default {
         if (form.dependencyIds.length > 0) fd.append('dependencyIds', form.dependencyIds.join(','))
 
         await submitJob(fd)
-        ElMessage.success('任务提交成功')
+        message.success('任务提交成功')
         selectedFile.value = null
-        uploadRef.value?.clearFiles()
       } catch (e) {
-        ElMessage.error('提交失败: ' + (e.message || '未知错误'))
+        message.error('提交失败: ' + (e.message || '未知错误'))
       } finally {
         submitting.value = false
       }
     }
 
     const resetForm = () => {
-      formRef.value?.resetFields()
+      formRef.value?.reset()
       selectedFile.value = null
-      uploadRef.value?.clearFiles()
     }
 
     onMounted(loadDeps)
 
     return {
-      formRef, uploadRef, form, rules, submitting, depList,
-      handleFileChange, handleFileRemove, handleSubmit, resetForm
+      formRef, form, submitting, depList, selectedFile,
+      handleSubmit, resetForm
     }
   }
 }

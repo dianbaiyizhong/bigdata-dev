@@ -1,49 +1,80 @@
 <template>
   <div class="job-list">
-    <h2 style="margin-bottom: 20px">Spark 任务列表</h2>
-    <el-card>
-      <el-table :data="tableData" v-loading="loading" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="jobName" label="任务名称" min-width="150" />
-        <el-table-column prop="mainClass" label="主类" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="master" label="Master" width="100" />
-        <el-table-column prop="deployMode" label="部署模式" width="90" />
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" size="small">
-              {{ statusLabel(row.status) }}
-            </el-tag>
+    <h2 class="mb-5">Spark 任务列表</h2>
+    <v-card>
+      <v-card-text>
+        <v-data-table
+          :items="tableData"
+          :headers="headers"
+          :loading="loading"
+          hover
+          density="comfortable"
+          class="elevation-0"
+          hide-default-footer
+        >
+          <template #item.status="{ item }">
+            <v-chip
+              :color="statusColor(item.status)"
+              size="small"
+              label
+            >
+              {{ statusLabel(item.status) }}
+            </v-chip>
           </template>
-        </el-table-column>
-        <el-table-column prop="errorMsg" label="错误信息" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button type="danger" size="small" @click="handleKill(row)" :disabled="row.status !== 'RUNNING'">
+          <template #item.mainClass="{ item }">
+            <span class="text-truncate d-inline-block" style="max-width: 180px">{{ item.mainClass }}</span>
+          </template>
+          <template #item.errorMsg="{ item }">
+            <span class="text-truncate d-inline-block" style="max-width: 150px">{{ item.errorMsg || '-' }}</span>
+          </template>
+          <template #item.actions="{ item }">
+            <v-btn
+              color="error"
+              size="small"
+              variant="tonal"
+              :disabled="item.status !== 'RUNNING'"
+              @click="handleKill(item)"
+            >
               终止
-            </el-button>
+            </v-btn>
           </template>
-        </el-table-column>
-      </el-table>
-      <div style="margin-top: 16px; text-align: right">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+        </v-data-table>
+
+        <v-row class="mt-4" justify="end" align="center">
+          <v-col cols="auto">
+            <v-select
+              v-model="size"
+              :items="[10, 20, 50]"
+              label="每页条数"
+              density="compact"
+              variant="outlined"
+              hide-details
+              style="width: 120px"
+              @update:model-value="loadData"
+            />
+          </v-col>
+          <v-col cols="auto">
+            <span class="text-body-2 text-medium-emphasis mr-3">共 {{ total }} 条</span>
+          </v-col>
+          <v-col cols="auto">
+            <v-pagination
+              v-model="page"
+              :length="Math.ceil(total / size) || 1"
+              :total-visible="5"
+              density="comfortable"
+              @update:model-value="loadData"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getJobList, killJob } from '../api/job'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useMessage } from '../composables/message'
 
 export default {
   name: 'JobList',
@@ -53,6 +84,19 @@ export default {
     const page = ref(1)
     const size = ref(10)
     const total = ref(0)
+    const message = useMessage()
+
+    const headers = [
+      { title: 'ID', key: 'id', width: 60 },
+      { title: '任务名称', key: 'jobName', minWidth: 150 },
+      { title: '主类', key: 'mainClass', minWidth: 180 },
+      { title: 'Master', key: 'master', width: 100 },
+      { title: '部署模式', key: 'deployMode', width: 90 },
+      { title: '状态', key: 'status', width: 100 },
+      { title: '错误信息', key: 'errorMsg', minWidth: 150 },
+      { title: '创建时间', key: 'createTime', width: 170 },
+      { title: '操作', key: 'actions', width: 120 }
+    ]
 
     const loadData = async () => {
       loading.value = true
@@ -61,7 +105,7 @@ export default {
         tableData.value = res.data.records || []
         total.value = res.data.total || 0
       } catch (e) {
-        ElMessage.error('加载失败')
+        message.error('加载失败')
       } finally {
         loading.value = false
       }
@@ -69,17 +113,17 @@ export default {
 
     const handleKill = async (row) => {
       try {
-        await ElMessageBox.confirm('确定要终止该任务吗？', '确认操作', { type: 'warning' })
+        await message.confirm('确定要终止该任务吗？')
         await killJob(row.id)
-        ElMessage.success('已终止')
+        message.success('已终止')
         loadData()
       } catch (e) {
-        if (e !== 'cancel') ElMessage.error('操作失败')
+        if (e !== 'cancel') message.error('操作失败')
       }
     }
 
-    const statusType = (status) => {
-      const map = { RUNNING: 'success', FINISHED: 'info', FAILED: 'danger', KILLED: 'warning', SUBMITTING: '' }
+    const statusColor = (status) => {
+      const map = { RUNNING: 'success', FINISHED: 'info', FAILED: 'error', KILLED: 'warning', SUBMITTING: 'default' }
       return map[status] || 'info'
     }
 
@@ -90,7 +134,7 @@ export default {
 
     onMounted(loadData)
 
-    return { loading, tableData, page, size, total, loadData, handleKill, statusType, statusLabel }
+    return { loading, tableData, headers, page, size, total, loadData, handleKill, statusColor, statusLabel }
   }
 }
 </script>
