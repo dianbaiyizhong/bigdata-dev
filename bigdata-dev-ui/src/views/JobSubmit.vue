@@ -58,14 +58,15 @@
             density="comfortable"
           />
 
-          <v-textarea
-            v-model="form.appArgs"
-            label="应用参数"
-            placeholder="程序参数，空格分隔"
-            rows="2"
-            variant="outlined"
-            density="comfortable"
-          />
+          <label class="text-body-2 mb-1 d-block">应用参数 (JSON)</label>
+          <div class="cm-editor-wrapper mb-3">
+            <Codemirror
+              v-model="form.appArgs"
+              :extensions="jsonExtensions"
+              :style="{ height: '120px' }"
+              placeholder='{ "key": "value" }'
+            />
+          </div>
 
           <v-divider class="mb-4">
             <span class="text-caption text-medium-emphasis">资源配置</span>
@@ -181,13 +182,16 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import { Codemirror } from 'vue-codemirror'
+import { json } from '@codemirror/lang-json'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { submitJob } from '../api/job'
 import { getDependencyList, getDependencyJars } from '../api/dependency'
 import { useMessage } from '../composables/message'
 
 export default {
   name: 'JobSubmit',
-  components: { Icon },
+  components: { Icon, Codemirror },
   setup() {
     const formRef = ref(null)
     const fileInput = ref(null)
@@ -196,6 +200,8 @@ export default {
     const selectedFile = ref(null)
     const dragOver = ref(false)
     const message = useMessage()
+
+    const jsonExtensions = [json(), oneDark]
 
     const form = reactive({
       jobName: '',
@@ -285,7 +291,7 @@ export default {
     onMounted(loadDeps)
 
     return {
-      formRef, fileInput, form, submitting, depList, selectedFile, dragOver,
+      formRef, fileInput, form, submitting, depList, selectedFile, dragOver, jsonExtensions,
       handleDrop, handleFileSelect, formatSize, handleSubmit, resetForm
     }
   }
@@ -293,6 +299,21 @@ export default {
 </script>
 
 <style scoped>
+.cm-editor-wrapper {
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cm-editor-wrapper:hover {
+  border-color: rgba(0, 0, 0, 0.87);
+}
+
+.cm-editor-wrapper:focus-within {
+  border-color: #1976D2;
+  border-width: 2px;
+}
+
 .drop-zone {
   border: 2px dashed #bbb;
   border-radius: 8px;

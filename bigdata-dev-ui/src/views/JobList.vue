@@ -82,6 +82,15 @@
           </template>
           <template #item.actions="{ item }">
             <v-btn
+              color="primary"
+              size="small"
+              variant="tonal"
+              class="mr-2"
+              @click="showDetail(item)"
+            >
+              详情
+            </v-btn>
+            <v-btn
               color="error"
               size="small"
               variant="tonal"
@@ -121,6 +130,41 @@
         </v-row>
       </v-card-text>
     </v-card>
+
+    <v-dialog v-model="detailDialogVisible" max-width="600">
+      <v-card v-if="currentJob">
+        <v-card-title class="text-h6">任务详情</v-card-title>
+        <v-divider />
+        <v-card-text class="pt-4">
+          <v-table density="compact">
+            <tbody>
+              <tr><td class="text-medium-emphasis" width="130">任务名称</td><td>{{ currentJob.jobName }}</td></tr>
+              <tr><td class="text-medium-emphasis">AppId</td><td>{{ currentJob.appId || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">主类</td><td>{{ currentJob.mainClass }}</td></tr>
+              <tr><td class="text-medium-emphasis">状态</td><td><v-chip size="small" :color="statusColor(currentJob.status)" label>{{ statusLabel(currentJob.status) }}</v-chip></td></tr>
+              <tr><td class="text-medium-emphasis">Master</td><td>{{ currentJob.master || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">部署模式</td><td>{{ currentJob.deployMode || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">Driver内存</td><td>{{ currentJob.driverMemory || '-' }} MB</td></tr>
+              <tr><td class="text-medium-emphasis">Driver核数</td><td>{{ currentJob.driverCores || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">Executor内存</td><td>{{ currentJob.executorMemory || '-' }} MB</td></tr>
+              <tr><td class="text-medium-emphasis">Executor核数</td><td>{{ currentJob.executorCores || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">Executor数量</td><td>{{ currentJob.numExecutors || '-' }}</td></tr>
+              <tr><td class="text-medium-emphasis">应用参数</td><td><code class="text-caption">{{ currentJob.appArgs || '-' }}</code></td></tr>
+              <tr><td class="text-medium-emphasis">Spark配置</td><td><pre class="text-caption" style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">{{ currentJob.sparkProperties || '-' }}</pre></td></tr>
+              <tr><td class="text-medium-emphasis">依赖组</td><td>{{ currentJob.dependencyIds || '-' }}</td></tr>
+              <tr v-if="currentJob.errorMsg"><td class="text-medium-emphasis">错误信息</td><td><pre class="text-caption text-error" style="white-space: pre-wrap; max-height: 120px; overflow-y: auto;">{{ currentJob.errorMsg }}</pre></td></tr>
+              <tr><td class="text-medium-emphasis">JAR路径</td><td><span class="text-caption">{{ currentJob.jarPath || '-' }}</span></td></tr>
+              <tr><td class="text-medium-emphasis">创建时间</td><td>{{ formatTime(currentJob.createTime) }}</td></tr>
+              <tr><td class="text-medium-emphasis">更新时间</td><td>{{ formatTime(currentJob.updateTime) }}</td></tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="detailDialogVisible = false">关闭</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -137,19 +181,18 @@ export default {
     const page = ref(1)
     const size = ref(10)
     const total = ref(0)
+    const currentJob = ref(null)
+    const detailDialogVisible = ref(false)
     const message = useMessage()
 
     const headers = [
       { title: 'ID', key: 'id', width: 60 },
       { title: 'AppId', key: 'appId', minWidth: 160 },
       { title: '任务名称', key: 'jobName', minWidth: 120 },
-      { title: '主类', key: 'mainClass', minWidth: 150 },
-      { title: 'Master', key: 'master', minWidth: 100 },
-      { title: '部署模式', key: 'deployMode', minWidth: 90 },
       { title: '状态', key: 'status', minWidth: 80 },
       { title: '错误信息', key: 'errorMsg', minWidth: 120 },
       { title: '创建时间', key: 'createTime', minWidth: 150 },
-      { title: '操作', key: 'actions', minWidth: 80 }
+      { title: '操作', key: 'actions', minWidth: 140 }
     ]
 
     const loadData = async () => {
@@ -176,6 +219,11 @@ export default {
       }
     }
 
+    const showDetail = (row) => {
+      currentJob.value = row
+      detailDialogVisible.value = true
+    }
+
     const statusColor = (status) => {
       const map = { RUNNING: 'success', FINISHED: 'info', FAILED: 'error', KILLED: 'warning', SUBMITTING: 'default' }
       return map[status] || 'info'
@@ -193,7 +241,7 @@ export default {
 
     onMounted(loadData)
 
-    return { loading, tableData, headers, page, size, total, loadData, handleKill, statusColor, statusLabel, formatTime }
+    return { loading, tableData, headers, page, size, total, currentJob, detailDialogVisible, loadData, handleKill, showDetail, statusColor, statusLabel, formatTime }
   }
 }
 </script>

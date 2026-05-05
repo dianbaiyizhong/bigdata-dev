@@ -224,9 +224,9 @@ export default {
       { title: 'ID', key: 'id', width: 60 },
       { title: '名称', key: 'name', minWidth: 120 },
       { title: '描述', key: 'description', minWidth: 120 },
-      { title: 'JAR数量', key: '_jarCount', width: 100 },
+      { title: 'JAR数量', key: '_jarCount', minWidth: 100 },
       { title: '创建时间', key: 'createTime', minWidth: 150 },
-      { title: '操作', key: 'actions', width: 160 }
+      { title: '操作', key: 'actions', minWidth: 160 }
     ]
 
     const jarHeaders = [
