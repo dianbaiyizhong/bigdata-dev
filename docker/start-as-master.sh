@@ -21,7 +21,6 @@ schematool -initSchema -dbType mysql
 hadoop fs -mkdir -p /user/hive/warehouse
 hadoop fs -chmod g+w /tmp
 hadoop fs -chmod g+w /user/hive/warehouse
-hadoop fs -put /usr/local/pyspark.zip /user/pyspark.zip
 
 # 启动hive
 nohup hive --service metastore 2>&1 &

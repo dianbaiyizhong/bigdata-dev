@@ -21,3 +21,4 @@ bigdata-model/pyspark-demo/metastore_db/
 /docker/*.gz
 /docker/*.tgz
 *.zip
+bigdata-dev-backend-1.0.jar
