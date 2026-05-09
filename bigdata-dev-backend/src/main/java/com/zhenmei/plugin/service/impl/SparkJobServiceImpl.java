@@ -97,6 +97,11 @@ public class SparkJobServiceImpl implements SparkJobService {
             if (StrUtil.isNotBlank(sparkConfig.getSparkHome())) {
                 launcher.setSparkHome(sparkConfig.getSparkHome());
             }
+            if (StrUtil.isNotBlank(sparkConfig.getHiveSiteXml())) {
+                launcher.addFile(sparkConfig.getHiveSiteXml());
+                launcher.setConf("spark.sql.catalogImplementation", "hive");
+                log.info("[JOB-{}] 添加 hive-site.xml: {}", job.getId(), sparkConfig.getHiveSiteXml());
+            }
             if (StrUtil.isNotBlank(request.getAppArgs())) {
                 launcher.addAppArgs(request.getAppArgs().split("\\s+"));
             }
@@ -272,6 +277,17 @@ public class SparkJobServiceImpl implements SparkJobService {
     public void killJob(Long id) {
         SparkJob job = sparkJobMapper.selectById(id);
         if (job != null && "RUNNING".equals(job.getStatus())) {
+            if (StrUtil.isNotBlank(job.getAppId())) {
+                try {
+                    Process p = Runtime.getRuntime().exec(new String[]{
+                            "yarn", "application", "-kill", job.getAppId()
+                    });
+                    p.waitFor();
+                    log.info("[JOB-{}] YARN application {} killed", id, job.getAppId());
+                } catch (Exception e) {
+                    log.error("[JOB-{}] kill YARN 失败: {}", id, e.getMessage());
+                }
+            }
             job.setStatus("KILLED");
             sparkJobMapper.updateById(job);
         }

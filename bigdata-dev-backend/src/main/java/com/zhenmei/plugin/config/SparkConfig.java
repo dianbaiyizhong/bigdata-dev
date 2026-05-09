@@ -14,4 +14,5 @@ public class SparkConfig {
     private String deployMode = "cluster";
     private String hadoopConfDir;
     private String yarnStagingDir = "/user/root/.sparkStaging/";
+    private String hiveSiteXml;
 }

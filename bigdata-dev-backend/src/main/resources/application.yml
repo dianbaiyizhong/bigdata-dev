@@ -28,3 +28,4 @@ spark:
   deploy-mode: ${SPARK_DEPLOY_MODE:cluster}
   hadoop-conf-dir: ${HADOOP_CONF_DIR:}
   yarn-staging-dir: /user/root/.sparkStaging/
+  hive-site-xml: ${HIVE_SITE_XML:/usr/bigdata/apache-hive-4.2.0-bin/conf/hive-site.xml}
