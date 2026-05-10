@@ -28,5 +28,31 @@
                 <value>/usr/bigdata/hadoop-3.5.0/tmp</value>
         </property>
 
-   
+       <property>
+        <name>fs.s3a.access.key</name>
+        <value>admin</value> <!-- 此处替换为你设置的 access_key -->
+    </property>
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>adminadmin</value> <!-- 此处替换为你设置的 secret_key -->
+    </property>
+    <!-- MinIO 自建服务要求设置为 true -->
+      <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+    </property>
+      <!-- 5. 禁用 SSL（因为测试环境没有配置 HTTPS）-->
+    <property>
+        <name>fs.s3a.connection.ssl.enabled</name>
+        <value>false</value>
+    </property>
+
+    <property>
+    <name>fs.s3a.endpoint</name>
+    <value>http://172.18.0.20:9000</value>
+  </property>
+  <property>
+    <name>fs.s3a.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
 </configuration>

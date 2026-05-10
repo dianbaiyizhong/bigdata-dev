@@ -31,11 +31,15 @@
             </v-chip>
           </template>
           <template #item.appId="{ item }">
-            <v-tooltip location="top" :text="item.appId || '-'">
-              <template #activator="{ props }">
-                <span v-bind="props" class="d-block text-truncate">{{ item.appId || '-' }}</span>
-              </template>
-            </v-tooltip>
+            <a
+              v-if="item.appId"
+              :href="`http://linux001:8088/cluster/app/${item.appId}`"
+              target="_blank"
+              class="d-block text-truncate"
+              style="color: #1976D2; text-decoration: none;"
+              @click.stop
+            >{{ item.appId }}</a>
+            <span v-else class="d-block text-truncate">-</span>
           </template>
           <template #item.jobName="{ item }">
             <v-tooltip location="top">

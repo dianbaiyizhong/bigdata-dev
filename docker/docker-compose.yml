@@ -31,6 +31,11 @@ services:
       - "linux003:172.18.0.13"
       - "mysql:172.18.0.14"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+
 
   linux003:
     image: ubuntu-ssh
@@ -47,6 +52,11 @@ services:
       - "linux003:172.18.0.13"
       - "mysql:172.18.0.14"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+
 
   mysql:
     image: mysql:8.0
@@ -68,6 +78,11 @@ services:
       - mysql_data:/var/lib/mysql
       - ./init-scripts:/docker-entrypoint-initdb.d # 挂载初始化脚本目录，脚本一定要create database和use database，不然会no work
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
 
   nginx:
     image: nginx:alpine
@@ -89,6 +104,10 @@ services:
       - linux001
       - mysql
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g   
 
 networks:
   mynetwork:

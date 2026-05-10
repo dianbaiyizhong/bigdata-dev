@@ -35,9 +35,25 @@ ADD mysql-connector-j-8.0.31.jar /usr/bigdata/apache-hive-4.2.0-bin/lib/mysql-co
 
 ADD mysql-connector-j-8.0.31.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/mysql-connector-java.jar
 
-
 ADD bigdata-dev-backend-1.0.jar /usr/local/bigdata-dev-backend.jar
 
+
+# 添加s3相关
+ADD jars/aws-java-sdk-core-1.12.797.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/aws-java-sdk-core-1.12.797.jar
+ADD jars/aws-java-sdk-dynamodb-1.12.797.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/aws-java-sdk-dynamodb-1.12.797.jar
+ADD jars/aws-java-sdk-s3-1.12.797.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/aws-java-sdk-s3-1.12.797.jar
+ADD jars/bundle-2.44.3.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/bundle-2.44.3.jar
+
+ADD jars/commons-configuration2-2.1.1.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/commons-configuration2-2.1.1.jar
+ADD jars/hadoop-aws-3.3.4.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/hadoop-aws-3.3.4.jar
+ADD jars/protobuf-java-3.21.9.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/protobuf-java-3.21.9.jar
+ADD jars/stax2-api-4.2.1.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/stax2-api-4.2.1.jar
+ADD jars/woodstox-core-5.3.0.jar /usr/bigdata/spark-3.5.8-bin-hadoop3/jars/woodstox-core-5.3.0.jar
+
+ADD jars/hadoop-aws-3.5.0.jar /usr/bigdata/hadoop-3.5.0/share/hadoop/common/hadoop-aws-3.5.0.jar
+ADD jars/bundle-2.44.3.jar /usr/bigdata/hadoop-3.5.0/share/hadoop/common/bundle-2.44.3.jar
+
+ADD jars/bundle-2.44.3.jar /usr/bigdata/apache-hive-4.2.0-bin/lib/bundle-2.44.3.jar
 
 
 

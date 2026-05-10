@@ -366,7 +366,6 @@ export default {
 
         await submitJob(fd)
         message.success('任务提交成功')
-        resetFormFields()
       } catch (e) {
         message.error('提交失败: ' + (e.message || '未知错误'))
       } finally {
@@ -377,7 +376,6 @@ export default {
     const resetFormFields = () => {
       selectedFile.value = null
       pyScriptFile.value = null
-      pyZipFile.value = null
     }
 
     const resetForm = () => {

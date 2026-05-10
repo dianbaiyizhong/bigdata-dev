@@ -21,3 +21,4 @@ node_modules
 /docker/*.gz
 /docker/*.tgz
 dist/
+dist-tmp/
