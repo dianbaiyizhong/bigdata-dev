@@ -11,21 +11,13 @@ import com.zhenmei.plugin.entity.SparkJob;
 import com.zhenmei.plugin.mapper.SparkJobMapper;
 import com.zhenmei.plugin.service.DependencyService;
 import com.zhenmei.plugin.service.PySparkZipService;
+import com.zhenmei.plugin.service.RemoteSparkSubmitter;
 import com.zhenmei.plugin.service.SparkJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.spark.launcher.SparkLauncher;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,16 +29,17 @@ public class SparkJobServiceImpl implements SparkJobService {
     private final DependencyService dependencyService;
     private final SparkConfig sparkConfig;
     private final PySparkZipService pySparkZipService;
+    private final RemoteSparkSubmitter remoteSubmitter;
 
     @Override
     public SparkJob submitJob(JobSubmitRequest request, String jarPath, String scriptPath) {
         boolean isPython = "PYTHON".equalsIgnoreCase(request.getJobType());
 
-        String pyZipPath = null;
+        String pyZipHdfsPath = null;
         if (isPython && request.getPySparkZipId() != null) {
             PySparkZip zip = pySparkZipService.getById(request.getPySparkZipId());
             if (zip != null) {
-                pyZipPath = zip.getHdfsPath();
+                pyZipHdfsPath = zip.getHdfsPath();
             }
         }
 
@@ -55,7 +48,7 @@ public class SparkJobServiceImpl implements SparkJobService {
         job.setJobType(StrUtil.blankToDefault(request.getJobType(), "JAR"));
         job.setJarPath(jarPath);
         job.setScriptPath(scriptPath);
-        job.setPyZipPath(pyZipPath);
+        job.setPyZipPath(pyZipHdfsPath);
         job.setMainClass(request.getMainClass());
         job.setAppArgs(request.getAppArgs());
         job.setSparkProperties(request.getSparkProperties());
@@ -70,194 +63,134 @@ public class SparkJobServiceImpl implements SparkJobService {
         job.setStatus("SUBMITTING");
         sparkJobMapper.insert(job);
 
+        Long jobId = job.getId();
+        String stagingDir = sparkConfig.getYarnStagingDir() + jobId;
+
         try {
-            SparkLauncher launcher;
+            // 1. 上传 main jar/script 到 HDFS
+            String mainResource = isPython ? scriptPath : jarPath;
+            String mainHdfsPath = remoteSubmitter.uploadToHdfs(mainResource, stagingDir);
 
-            if (isPython) {
-                launcher = new SparkLauncher()
-                        .setAppResource(scriptPath)
-                        .setMaster(job.getMaster())
-                        .setDeployMode(job.getDeployMode())
-                        .setAppName(request.getJobName())
-                        .setVerbose(true);
-
-                if (StrUtil.isNotBlank(pyZipPath)) {
-                    launcher.addPyFile(pyZipPath);
-                }
-            } else {
-                launcher = new SparkLauncher()
-                        .setAppResource(jarPath)
-                        .setMainClass(request.getMainClass())
-                        .setMaster(job.getMaster())
-                        .setDeployMode(job.getDeployMode())
-                        .setAppName(request.getJobName())
-                        .setVerbose(true);
-            }
-
-            if (StrUtil.isNotBlank(sparkConfig.getSparkHome())) {
-                launcher.setSparkHome(sparkConfig.getSparkHome());
-            }
-            if (StrUtil.isNotBlank(sparkConfig.getHiveSiteXml())) {
-                launcher.addFile(sparkConfig.getHiveSiteXml());
-                launcher.setConf("spark.sql.catalogImplementation", "hive");
-                log.info("[JOB-{}] 添加 hive-site.xml: {}", job.getId(), sparkConfig.getHiveSiteXml());
-            }
-            if (StrUtil.isNotBlank(request.getAppArgs())) {
-                launcher.addAppArgs(request.getAppArgs().split("\\s+"));
-            }
-            if (request.getDriverMemory() != null) {
-                launcher.setConf(SparkLauncher.DRIVER_MEMORY, request.getDriverMemory() + "m");
-            }
-            if (request.getDriverCores() != null) {
-                launcher.setConf("spark.driver.cores", String.valueOf(request.getDriverCores()));
-            }
-            if (request.getExecutorMemory() != null) {
-                launcher.setConf(SparkLauncher.EXECUTOR_MEMORY, request.getExecutorMemory() + "m");
-            }
-            if (request.getExecutorCores() != null) {
-                launcher.setConf(SparkLauncher.EXECUTOR_CORES, String.valueOf(request.getExecutorCores()));
-            }
-            if (request.getNumExecutors() != null) {
-                launcher.setConf("spark.executor.instances", String.valueOf(request.getNumExecutors()));
-            }
-            if (StrUtil.isNotBlank(request.getSparkProperties())) {
-                for (String prop : request.getSparkProperties().split("\n")) {
-                    prop = prop.trim();
-                    if (prop.isEmpty() || prop.startsWith("#")) continue;
-                    String[] kv = prop.split("=", 2);
-                    if (kv.length == 2) {
-                        launcher.setConf(kv[0].trim(), kv[1].trim());
-                    }
-                }
-            }
-
+            // 2. 上传依赖 jars 到 HDFS
+            List<String> dependencyHdfsPaths = new ArrayList<>();
             if (StrUtil.isNotBlank(request.getDependencyIds())) {
                 List<Long> depIds = Arrays.stream(request.getDependencyIds().split(","))
                         .map(Long::parseLong)
                         .collect(Collectors.toList());
                 for (Long depId : depIds) {
                     List<DependencyJar> jars = dependencyService.getJars(depId);
-                    for (DependencyJar jar : jars) {
-                        if (StrUtil.isNotBlank(jar.getJarPath())) {
-                            launcher.addJar(jar.getJarPath());
+                    for (DependencyJar depJar : jars) {
+                        if (StrUtil.isNotBlank(depJar.getJarPath())) {
+                            String depHdfsPath = remoteSubmitter.uploadToHdfs(depJar.getJarPath(), stagingDir + "/jars");
+                            dependencyHdfsPaths.add(depHdfsPath);
                         }
                     }
                 }
             }
 
-            Process spark = launcher.launch();
-            Long jobId = job.getId();
+            // 3. 上传 hive-site.xml
+            String hiveSiteHdfsPath = null;
+            if (StrUtil.isNotBlank(sparkConfig.getHiveSiteXml())) {
+                hiveSiteHdfsPath = remoteSubmitter.uploadToHdfs(sparkConfig.getHiveSiteXml(), stagingDir);
+            }
 
-            Pattern appIdPattern = Pattern.compile("application_\\d+_\\d+");
-            AtomicBoolean appIdSet = new AtomicBoolean(false);
+            // 4. 构建 Spark 配置 map
+            Map<String, String> sparkConfMap = new HashMap<>();
+            sparkConfMap.put("spark.app.name", job.getJobName());
+            sparkConfMap.put("spark.master", job.getMaster());
+            sparkConfMap.put("spark.submit.deployMode", job.getDeployMode());
 
-            StringBuilder stdoutBuilder = new StringBuilder();
-            Thread stdoutThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(spark.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        stdoutBuilder.append(line).append("\n");
-                        log.info("[JOB-{}][STDOUT] {}", jobId, line);
-
-                        if (!appIdSet.get()) {
-                            Matcher m = appIdPattern.matcher(line);
-                            if (m.find()) {
-                                String appId = m.group();
-                                appIdSet.set(true);
-                                SparkJob update = new SparkJob();
-                                update.setId(jobId);
-                                update.setAppId(appId);
-                                sparkJobMapper.updateById(update);
-                                log.info("[JOB-{}] 捕获到 appId: {}", jobId, appId);
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    log.warn("[JOB-{}] 读取stdout异常", jobId, e);
-                }
-            }, "stdout-reader-" + jobId);
-
-            StringBuilder stderrBuilder = new StringBuilder();
-            Thread stderrThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(spark.getErrorStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        stderrBuilder.append(line).append("\n");
-                        log.warn("[JOB-{}][STDERR] {}", jobId, line);
-
-                        if (!appIdSet.get()) {
-                            Matcher m = appIdPattern.matcher(line);
-                            if (m.find()) {
-                                String appId = m.group();
-                                appIdSet.set(true);
-                                SparkJob update = new SparkJob();
-                                update.setId(jobId);
-                                update.setAppId(appId);
-                                sparkJobMapper.updateById(update);
-                                log.info("[JOB-{}] 捕获到 appId (stderr): {}", jobId, appId);
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    log.warn("[JOB-{}] 读取stderr异常", jobId, e);
-                }
-            }, "stderr-reader-" + jobId);
-
-            stdoutThread.start();
-            stderrThread.start();
-
-            // 后台等待进程结束
-            new Thread(() -> {
-                try {
-                    int exitCode = spark.waitFor();
-                    stdoutThread.join(30000);
-                    stderrThread.join(30000);
-
-                    log.info("[JOB-{}] 进程退出码: {}", jobId, exitCode);
-
-                    SparkJob j = sparkJobMapper.selectById(jobId);
-                    if (j != null) {
-                        if (exitCode == 0) {
-                            j.setStatus("FINISHED");
-                        } else {
-                            j.setStatus("FAILED");
-                            String errMsg = stderrBuilder.toString();
-                            if (errMsg.isEmpty()) {
-                                errMsg = "进程退出码: " + exitCode;
-                            }
-                            // 截取最后5000字符
-                            if (errMsg.length() > 5000) {
-                                errMsg = "...(前略)\n" + errMsg.substring(errMsg.length() - 5000);
-                            }
-                            j.setErrorMsg(errMsg);
-                            log.error("[JOB-{}] 失败, 退出码: {}, stderr:\n{}", jobId, exitCode, errMsg);
-                        }
-                        sparkJobMapper.updateById(j);
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    SparkJob j = sparkJobMapper.selectById(jobId);
-                    if (j != null) {
-                        j.setStatus("FAILED");
-                        j.setErrorMsg("任务被中断: " + e.getMessage());
-                        sparkJobMapper.updateById(j);
+            if (StrUtil.isNotBlank(request.getSparkProperties())) {
+                for (String prop : request.getSparkProperties().split("\n")) {
+                    prop = prop.trim();
+                    if (prop.isEmpty() || prop.startsWith("#")) continue;
+                    String[] kv = prop.split("=", 2);
+                    if (kv.length == 2) {
+                        sparkConfMap.put(kv[0].trim(), kv[1].trim());
                     }
                 }
-            }, "job-waiter-" + jobId).start();
+            }
 
+            // 5. 通过 YARN API 提交
+            log.info("[JOB-{}] 通过 YARN API 提交: {}", jobId, mainHdfsPath);
+            String appId = remoteSubmitter.submitYarnApplication(
+                    job.getJobName(),
+                    mainHdfsPath,
+                    request.getMainClass(),
+                    request.getAppArgs(),
+                    isPython,
+                    pyZipHdfsPath,
+                    dependencyHdfsPaths,
+                    stagingDir,
+                    sparkConfMap,
+                    hiveSiteHdfsPath,
+                    request.getDriverMemory(),
+                    request.getDriverCores(),
+                    request.getExecutorMemory(),
+                    request.getExecutorCores(),
+                    request.getNumExecutors()
+            );
+
+            job.setAppId(appId);
             job.setStatus("RUNNING");
             sparkJobMapper.updateById(job);
 
-        } catch (IOException e) {
-            log.error("提交Spark任务失败", e);
+            // 6. 后台定期轮询 YARN 状态
+            Long finalJobId = jobId;
+            String finalAppId = appId;
+            new Thread(() -> monitorYarnStatus(finalJobId, finalAppId), "yarn-monitor-" + jobId).start();
+
+        } catch (Exception e) {
+            log.error("[JOB-{}] 提交Spark任务失败", jobId, e);
             job.setStatus("FAILED");
-            job.setErrorMsg("启动失败: " + e.getMessage());
+            job.setErrorMsg("提交失败: " + e.getMessage());
             sparkJobMapper.updateById(job);
         }
 
         return job;
+    }
+
+    private void monitorYarnStatus(Long jobId, String appId) {
+        try {
+            while (true) {
+                String state = remoteSubmitter.getAppState(appId);
+                SparkJob job = sparkJobMapper.selectById(jobId);
+                if (job == null) break;
+
+                log.info("[JOB-{}] YARN 状态: {}, appId: {}", jobId, state, appId);
+
+                switch (state) {
+                    case "FINISHED":
+                    case "SUCCEEDED":
+                        job.setStatus("FINISHED");
+                        sparkJobMapper.updateById(job);
+                        return;
+                    case "FAILED":
+                    case "KILLED":
+                        job.setStatus("FAILED");
+                        job.setErrorMsg("YARN 状态: " + state);
+                        sparkJobMapper.updateById(job);
+                        return;
+                    case "RUNNING":
+                    case "ACCEPTED":
+                    case "SUBMITTED":
+                        if (!"RUNNING".equals(job.getStatus())) {
+                            job.setStatus("RUNNING");
+                            sparkJobMapper.updateById(job);
+                        }
+                        break;
+                    default:
+                        // UNKNOWN 等 - 继续等待
+                        break;
+                }
+
+                Thread.sleep(5000);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.error("[JOB-{}] 轮询 YARN 状态异常", jobId, e);
+        }
     }
 
     @Override
@@ -279,10 +212,7 @@ public class SparkJobServiceImpl implements SparkJobService {
         if (job != null && "RUNNING".equals(job.getStatus())) {
             if (StrUtil.isNotBlank(job.getAppId())) {
                 try {
-                    Process p = Runtime.getRuntime().exec(new String[]{
-                            "yarn", "application", "-kill", job.getAppId()
-                    });
-                    p.waitFor();
+                    remoteSubmitter.killYarnApp(job.getAppId());
                     log.info("[JOB-{}] YARN application {} killed", id, job.getAppId());
                 } catch (Exception e) {
                     log.error("[JOB-{}] kill YARN 失败: {}", id, e.getMessage());

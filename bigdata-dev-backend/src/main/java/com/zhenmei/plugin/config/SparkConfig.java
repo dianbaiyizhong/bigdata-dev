@@ -15,4 +15,6 @@ public class SparkConfig {
     private String hadoopConfDir;
     private String yarnStagingDir = "/user/root/.sparkStaging/";
     private String hiveSiteXml;
+    private String fsDefaultFs;
+    private String yarnResourceManagerAddress;
 }
