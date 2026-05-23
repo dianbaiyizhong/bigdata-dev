@@ -43,6 +43,7 @@ public class SparkJobServiceImpl implements SparkJobService {
             }
         }
 
+        log.info("pyZipHdfsPath:{}", pyZipHdfsPath);
         SparkJob job = new SparkJob();
         job.setJobName(request.getJobName());
         job.setJobType(StrUtil.blankToDefault(request.getJobType(), "JAR"));

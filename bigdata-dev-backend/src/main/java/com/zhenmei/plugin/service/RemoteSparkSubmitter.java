@@ -143,6 +143,11 @@ public class RemoteSparkSubmitter {
             Path sparkJarsArchive = new Path(SPARK_JARS_ARCHIVE_HDFS);
             addLocalResource(localResources, "__spark_libs__", sparkJarsArchive, LocalResourceType.ARCHIVE, LocalResourceVisibility.APPLICATION, fs);
 
+            // PySpark 依赖归档 — YARN 解压到 ./__pyfiles__/
+            if (isPython && StrUtil.isNotBlank(pyZipHdfsPath)) {
+                addLocalResource(localResources, "__pyfiles__", new Path(pyZipHdfsPath), LocalResourceType.ARCHIVE, LocalResourceVisibility.APPLICATION, fs);
+            }
+
             // 依赖 jars
             if (dependencyJarHdfsPaths != null) {
                 for (int i = 0; i < dependencyJarHdfsPaths.size(); i++) {
@@ -181,7 +186,15 @@ public class RemoteSparkSubmitter {
             env.put("CLASSPATH", cp.toString());
             env.put("SPARK_YARN_MODE", "true");
             env.put("SPARK_HOME", sparkConfig.getSparkHome());
-            // 让 AM 容器能读取 Hadoop 配置（core-site.xml 等），从而解析 HDFS 路径
+            if (isPython && StrUtil.isNotBlank(pyZipHdfsPath)) {
+                String pyZipName = new Path(pyZipHdfsPath).getName();
+                if (pyZipName.endsWith(".zip")) {
+                    pyZipName = pyZipName.substring(0, pyZipName.length() - 4);
+                }
+                String sparkHome = sparkConfig.getSparkHome();
+                env.put("PYSPARK_PYTHON", "./__pyfiles__/" + pyZipName + "/bin/python");
+                env.put("PYTHONPATH", "./__pyfiles__:" + sparkHome + "/python/lib/pyspark.zip:" + sparkHome + "/python/lib/py4j-0.10.9.3-src.zip");
+            }
             if (StrUtil.isNotBlank(sparkConfig.getHadoopConfDir())) {
                 env.put("HADOOP_CONF_DIR", sparkConfig.getHadoopConfDir());
             }
@@ -197,9 +210,7 @@ public class RemoteSparkSubmitter {
 
             if (isPython) {
                 cmd.append(" --primary-py-file ").append(mainHdfsPath);
-                if (StrUtil.isNotBlank(pyZipHdfsPath)) {
-                    cmd.append(" --arg --py-files --arg ").append(pyZipHdfsPath);
-                }
+                // --py-files 通过 spark.submit.pyFiles 在配置文件中传递，不在命令行重复添加
             } else {
                 cmd.append(" --jar ").append(mainHdfsPath);
                 if (StrUtil.isNotBlank(mainClass)) {
@@ -305,17 +316,25 @@ public class RemoteSparkSubmitter {
             }
 
             if (isPython && StrUtil.isNotBlank(pyZipHdfsPath)) {
-                props.setProperty("spark.yarn.dist.pyFiles", pyZipHdfsPath);
-                props.setProperty("spark.submit.pyFiles", pyZipHdfsPath);
+                String pyZipName = new Path(pyZipHdfsPath).getName();
+                if (pyZipName.endsWith(".zip")) {
+                    pyZipName = pyZipName.substring(0, pyZipName.length() - 4);
+                }
+                props.setProperty("spark.submit.pyFiles", "./__pyfiles__");
+                props.setProperty("spark.executorEnv.PYSPARK_PYTHON", "./__pyfiles__/" + pyZipName + "/bin/python");
+                props.setProperty("spark.executorEnv.PYTHONPATH", "./__pyfiles__:" + sparkHome + "/python/lib/pyspark.zip:" + sparkHome + "/python/lib/py4j-0.10.9.3-src.zip");
+            }
+            List<String> distFiles = new ArrayList<>();
+            if (StrUtil.isNotBlank(hiveSiteHdfsPath)) {
+                distFiles.add(hiveSiteHdfsPath);
+                props.setProperty("spark.sql.catalogImplementation", "hive");
+            }
+            if (!distFiles.isEmpty()) {
+                props.setProperty("spark.yarn.dist.files", String.join(",", distFiles));
             }
 
             if (dependencyJarHdfsPaths != null && !dependencyJarHdfsPaths.isEmpty()) {
                 props.setProperty("spark.yarn.dist.jars", String.join(",", dependencyJarHdfsPaths));
-            }
-
-            if (StrUtil.isNotBlank(hiveSiteHdfsPath)) {
-                props.setProperty("spark.yarn.dist.files", hiveSiteHdfsPath);
-                props.setProperty("spark.sql.catalogImplementation", "hive");
             }
 
             StringWriter sw = new StringWriter();
