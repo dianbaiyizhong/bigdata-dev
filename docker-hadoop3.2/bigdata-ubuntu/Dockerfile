@@ -79,12 +79,11 @@ RUN echo "Asia/Shanghai" > /etc/timezone
 RUN mkdir /usr/bigdata/apache-hive-3.1.2-bin/logs
 
 
-COPY ./start-as-master.sh /
-RUN chmod +x /start-as-master.sh
-COPY ./start-as-slave.sh /
-RUN chmod +x /start-as-slave.sh
-COPY ./restart.sh /
-RUN chmod +x /restart.sh
+COPY ./start-bigdata.sh /
+RUN chmod +x /start-bigdata.sh
+
+COPY ./restart-bigdata.sh /
+RUN chmod +x /restart-bigdata.sh
 RUN chmod -R 777 /usr/bigdata
 
 
@@ -114,6 +113,9 @@ RUN apt-get install -y curl
 RUN apt-get install -y git
 RUN apt-get install -y vim
 RUN apt-get install -y zsh
+RUN apt-get install -y zip
+RUN apt-get install -y sshpass
+
 # 安装zsh
 RUN  yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 # 安装自动补全插件

@@ -3,9 +3,13 @@
 #!/bin/bash
 
 ssh-keygen -t rsa
-ssh-copy-id linux001
-ssh-copy-id linux002
-ssh-copy-id linux003
+# ssh-copy-id linux001
+# ssh-copy-id linux002
+# ssh-copy-id linux003
+# yes '' | ssh-keygen -t rsa
+sshpass -p 'root' ssh-copy-id -o StrictHostKeyChecking=no root@linux001
+sshpass -p 'root' ssh-copy-id -o StrictHostKeyChecking=no root@linux002
+sshpass -p 'root' ssh-copy-id -o StrictHostKeyChecking=no root@linux003
 
 
 hdfs namenode -format
@@ -21,6 +25,13 @@ schematool -initSchema -dbType mysql
 hadoop fs -mkdir -p /user/hive/warehouse
 hadoop fs -chmod g+w /tmp
 hadoop fs -chmod g+w /user/hive/warehouse
+
+hadoop fs -mkdir -p /user/spark/jars
+
+# 压缩上传
+zip -jr spark-jars.zip /usr/bigdata/spark-3.2.1-bin-hadoop3.2/jars/*
+hadoop fs -put -f spark-jars.zip /user/spark/spark-jars.zip
+hadoop fs -put -f /usr/bigdata/spark-3.2.1-bin-hadoop3.2/jars/spark-yarn_2.12-3.2.1.jar /user/spark/jars/spark-yarn_2.12-3.2.1.jar
 
 # 启动hive
 # nohup hive --service metastore 2>&1 &
