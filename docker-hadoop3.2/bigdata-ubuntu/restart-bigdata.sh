@@ -4,6 +4,8 @@
 
 
 /usr/bigdata/hadoop-3.2.0/sbin/start-dfs.sh
+# 要解除安全模式，否则会报错https://cloud.tencent.com/developer/article/2039410
+hadoop dfsadmin -safemode leave
 /usr/bigdata/hadoop-3.2.0/sbin/start-yarn.sh
 /usr/bigdata/hadoop-3.2.0/sbin/yarn-daemon.sh start timelineserver
 /usr/bigdata/hadoop-3.2.0/sbin/mr-jobhistory-daemon.sh start historyserver
