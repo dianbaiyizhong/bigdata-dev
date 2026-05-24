@@ -59,6 +59,27 @@ services:
         limits:
           memory: 8g
 
+  backend:
+    build:
+      context: ./bigdata-ubuntu  # 构建上下文目录
+      dockerfile: Dockerfile     # 该目录下的 Dockerfile 文件名
+    image: ubuntu-ssh
+    container_name: backend
+    hostname: backend
+    networks:
+      mynetwork:
+        ipv4_address: 172.18.0.80
+    extra_hosts:
+      - "linux001:172.18.0.11"
+      - "linux002:172.18.0.12"
+      - "linux003:172.18.0.13"
+      - "mysql:172.18.0.14"
+      - "backend:172.18.0.80"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   mysql:
     image: mysql:8.0
@@ -112,26 +133,26 @@ services:
         limits:
           memory: 1g   
 
-  springboot-tomcat:
-    hostname: backend
-    container_name: backend
-    networks:
-      mynetwork:
-        ipv4_address: 172.18.0.80
-    build:
-      context: ./tomcat-service  # 构建上下文目录
-      dockerfile: Dockerfile     # 该目录下的 Dockerfile 文件名
-    # ports:
-    #   - "8080:8080"              # 将容器的8080映射到主机的8080
-    # 如果需要传递 JVM 参数
-    extra_hosts:
-      - "linux001:172.18.0.11"
-      - "linux002:172.18.0.12"
-      - "linux003:172.18.0.13"
-      - "mysql:172.18.0.14"
-      - "backend:172.18.0.80"
-    environment:
-      - JAVA_OPTS=-Xmx512m
+  # bigdata-backend:
+  #   hostname: backend
+  #   container_name: bigdata-backend
+  #   networks:
+  #     mynetwork:
+  #       ipv4_address: 172.18.0.80
+  #   build:
+  #     context: ./backend  # 构建上下文目录
+  #     dockerfile: Dockerfile     # 该目录下的 Dockerfile 文件名
+  #   # ports:
+  #   #   - "8080:8080"              # 将容器的8080映射到主机的8080
+  #   # 如果需要传递 JVM 参数
+  #   extra_hosts:
+  #     - "linux001:172.18.0.11"
+  #     - "linux002:172.18.0.12"
+  #     - "linux003:172.18.0.13"
+  #     - "mysql:172.18.0.14"
+  #     - "backend:172.18.0.80"
+  #   environment:
+  #     - JAVA_OPTS=-Xmx512m
 networks:
   mynetwork:
     driver: bridge

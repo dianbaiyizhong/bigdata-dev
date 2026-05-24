@@ -26,8 +26,6 @@ spark:
   spark-home: ${SPARK_HOME:/usr/bigdata/spark-3.2.1-bin-hadoop3.2}
   master: ${SPARK_MASTER:yarn}
   deploy-mode: ${SPARK_DEPLOY_MODE:cluster}
-  hadoop-conf-dir: ${HADOOP_CONF_DIR:/usr/bigdata/hadoop-3.2.0/etc/hadoop}
+  hadoop-conf-dir: ${HADOOP_CONF_DIR:}
   yarn-staging-dir: /user/root/.sparkStaging/
   hive-site-xml: ${HIVE_SITE_XML:/usr/bigdata/apache-hive-3.1.2-bin/conf/hive-site.xml}
-  fs-default-fs: ${FS_DEFAULT_FS:hdfs://linux001:9820}
-  yarn-resource-manager-address: ${YARN_RM_ADDRESS:linux001:8032}

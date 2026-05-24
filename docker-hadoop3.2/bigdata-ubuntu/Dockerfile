@@ -44,7 +44,7 @@ ADD mysql-connector-j-8.0.31.jar /usr/bigdata/apache-hive-3.1.2-bin/lib/mysql-co
 
 ADD mysql-connector-j-8.0.31.jar /usr/bigdata/spark-3.2.1-bin-hadoop3.2/jars/mysql-connector-java.jar
 
-# ADD bigdata-dev-backend-1.0.jar /usr/local/bigdata-dev-backend.jar
+ADD bigdata-dev-backend-1.0.jar /usr/local/bigdata-dev-backend.jar
 
 
 
@@ -78,6 +78,8 @@ RUN echo "Asia/Shanghai" > /etc/timezone
 ## 创建hive目录
 RUN mkdir /usr/bigdata/apache-hive-3.1.2-bin/logs
 
+COPY ./restart-backend.sh /
+RUN chmod +x /restart-backend.sh
 
 COPY ./start-bigdata.sh /
 RUN chmod +x /start-bigdata.sh
