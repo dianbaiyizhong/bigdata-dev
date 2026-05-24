@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-
+from util import printHello
 # 创建支持Hive的SparkSession
 spark = SparkSession.builder \
     .appName("Read Hive Table") \

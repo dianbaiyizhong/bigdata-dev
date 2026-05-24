@@ -40,7 +40,8 @@ public class SparkJobController {
             @RequestParam(required = false) Integer numExecutors,
             @RequestParam(required = false) String sparkProperties,
             @RequestParam(required = false) String dependencyIds,
-            @RequestParam(required = false) Long pySparkZipId) throws IOException {
+            @RequestParam(required = false) Long pySparkZipId,
+            @RequestParam(required = false) String entryFile) throws IOException {
 
         JobSubmitRequest request = new JobSubmitRequest();
         request.setJobName(jobName);
@@ -57,6 +58,7 @@ public class SparkJobController {
         request.setSparkProperties(sparkProperties);
         request.setDependencyIds(dependencyIds);
         request.setPySparkZipId(pySparkZipId);
+        request.setEntryFile(entryFile);
 
         String jarPath = null;
         String scriptPath = null;

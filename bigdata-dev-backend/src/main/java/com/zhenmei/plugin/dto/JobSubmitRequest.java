@@ -19,4 +19,5 @@ public class JobSubmitRequest {
     private Integer numExecutors;
     private String dependencyIds;
     private Long pySparkZipId;
+    private String entryFile;
 }

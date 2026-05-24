@@ -63,16 +63,16 @@
           <!-- PySpark 上传 -->
           <template v-if="form.jobType === 'PYTHON'">
             <div class="mb-3">
-              <label class="text-body-2 mb-1 d-block">上传 Python 脚本</label>
+              <label class="text-body-2 mb-1 d-block">上传 Python 文件（.py 或 .zip 工程包）</label>
               <div
                 class="drop-zone drop-zone--py"
                 :class="{ 'drop-zone--active': pyDragOver, 'drop-zone--has-file': pyScriptFile }"
                 @dragover.prevent="pyDragOver = true"
                 @dragleave.prevent="pyDragOver = false"
-                @drop.prevent="handlePyDrop('script', $event)"
+                @drop.prevent="handlePyDrop($event)"
                 @click="$refs.pyScriptInput.click()"
               >
-                <input ref="pyScriptInput" type="file" accept=".py" hidden @change="handlePyScriptSelect" />
+                <input ref="pyScriptInput" type="file" accept=".py,.zip" hidden @change="handlePyScriptSelect" />
                 <template v-if="pyScriptFile">
                   <v-icon color="primary" size="24" class="mr-2">mdi-language-python</v-icon>
                   <span class="text-body-2">{{ pyScriptFile.name }}</span>
@@ -81,11 +81,21 @@
                 </template>
                 <template v-else>
                   <v-icon color="grey" size="40" class="mb-2">mdi-language-python</v-icon>
-                  <span class="text-body-2 text-medium-emphasis">拖拽 .py 脚本到此处，或点击选择</span>
+                  <span class="text-body-2 text-medium-emphasis">拖拽 .py 或 .zip 到此处，或点击选择</span>
                 </template>
                 <Icon icon="streamline-logos:spark-logo-solid" class="spark-icon" />
               </div>
             </div>
+
+            <v-text-field
+              v-model="form.entryFile"
+              label="入口文件"
+              placeholder="main.py 或 src/main.py"
+              hint="上传 .zip 时指定入口文件路径；上传 .py 时随意填写"
+              persistent-hint
+              variant="outlined"
+              density="comfortable"
+            />
 
             <v-select
               v-model="form.pySparkZipId"
@@ -241,16 +251,13 @@ export default {
     const formRef = ref(null)
     const fileInput = ref(null)
     const pyScriptInput = ref(null)
-    const pyZipInput = ref(null)
     const submitting = ref(false)
     const depList = ref([])
     const pySparkZipList = ref([])
     const selectedFile = ref(null)
     const dragOver = ref(false)
     const pyScriptFile = ref(null)
-    const pyZipFile = ref(null)
     const pyDragOver = ref(false)
-    const pyZipDragOver = ref(false)
     const message = useMessage()
 
     const jsonExtensions = [json(), oneDark]
@@ -258,6 +265,7 @@ export default {
     const form = reactive({
       jobName: '',
       jobType: 'JAR',
+      entryFile: '',
       mainClass: '',
       appArgs: '',
       driverMemory: 1024,
@@ -298,28 +306,21 @@ export default {
       if (file) selectedFile.value = file
     }
 
-    const handlePyDrop = (type, e) => {
-      if (type === 'script') pyDragOver.value = false
-      else pyZipDragOver.value = false
+    const handlePyDrop = (e) => {
+      pyDragOver.value = false
       const files = e.dataTransfer?.files
       if (!files || files.length === 0) return
-      if (type === 'script' && files[0].name.endsWith('.py')) {
+      const name = files[0].name.toLowerCase()
+      if (name.endsWith('.py') || name.endsWith('.zip')) {
         pyScriptFile.value = files[0]
-      } else if (type === 'zip' && files[0].name.endsWith('.zip')) {
-        pyZipFile.value = files[0]
       } else {
-        message.warning(type === 'script' ? '请选择 .py 文件' : '请选择 .zip 文件')
+        message.warning('请选择 .py 或 .zip 文件')
       }
     }
 
     const handlePyScriptSelect = (e) => {
       const file = e.target.files?.[0]
       if (file) pyScriptFile.value = file
-    }
-
-    const handlePyZipSelect = (e) => {
-      const file = e.target.files?.[0]
-      if (file) pyZipFile.value = file
     }
 
     const formatSize = (bytes) => {
@@ -332,7 +333,7 @@ export default {
       const isPySpark = form.jobType === 'PYTHON'
 
       if (isPySpark && !pyScriptFile.value) {
-        message.warning('请上传 Python 脚本')
+        message.warning('请上传 Python 脚本或工程包')
         return
       }
       if (!isPySpark && !selectedFile.value) {
@@ -348,6 +349,7 @@ export default {
         const fd = new FormData()
         if (isPySpark) {
           fd.append('pyScript', pyScriptFile.value)
+          if (form.entryFile) fd.append('entryFile', form.entryFile)
           if (form.pySparkZipId) fd.append('pySparkZipId', form.pySparkZipId)
         } else {
           fd.append('file', selectedFile.value)

@@ -1,5 +1,6 @@
 package com.zhenmei.plugin.service.impl;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,16 +18,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.launcher.SparkLauncher;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Slf4j
 @Service
@@ -48,6 +51,16 @@ public class SparkJobServiceImpl implements SparkJobService {
             if (zip != null) {
                 pyZipPath = zip.getHdfsPath();
             }
+        }
+
+        String entryFile = request.getEntryFile();
+        boolean isZipProject = isPython && StrUtil.isNotBlank(entryFile)
+                && StrUtil.isNotBlank(scriptPath) && scriptPath.endsWith(".zip");
+
+        String extractedEntryPath = null;
+        if (isZipProject) {
+            extractedEntryPath = extractEntryFromZip(scriptPath, entryFile);
+            log.info("从 zip 提取入口文件: {} -> {}", entryFile, extractedEntryPath);
         }
 
         SparkJob job = new SparkJob();
@@ -74,13 +87,17 @@ public class SparkJobServiceImpl implements SparkJobService {
             SparkLauncher launcher;
 
             if (isPython) {
+                String mainScript = isZipProject ? extractedEntryPath : scriptPath;
                 launcher = new SparkLauncher()
-                        .setAppResource(scriptPath)
+                        .setAppResource(mainScript)
                         .setMaster(job.getMaster())
                         .setDeployMode(job.getDeployMode())
                         .setAppName(request.getJobName())
                         .setVerbose(true);
 
+                if (isZipProject) {
+                    launcher.addPyFile(scriptPath);
+                }
                 if (StrUtil.isNotBlank(pyZipPath)) {
                     launcher.addPyFile(pyZipPath);
                 }
@@ -258,6 +275,30 @@ public class SparkJobServiceImpl implements SparkJobService {
         }
 
         return job;
+    }
+
+    private String extractEntryFromZip(String zipPath, String entryFile) {
+        File tmpDir = new File(FileUtil.getTmpDirPath(), "pyspark-extracted");
+        if (!tmpDir.exists()) tmpDir.mkdirs();
+
+        String entryName = new File(entryFile).getName();
+        File output = new File(tmpDir, System.currentTimeMillis() + "_" + entryName);
+        String normalizedEntry = entryFile.replace("\\", "/");
+
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath))) {
+            ZipEntry ze;
+            while ((ze = zis.getNextEntry()) != null) {
+                String name = ze.getName().replace("\\", "/");
+                if (name.equals(normalizedEntry) || name.endsWith("/" + normalizedEntry)) {
+                    Files.copy(zis, output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    return output.getAbsolutePath();
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("解压入口文件失败: " + e.getMessage(), e);
+        }
+
+        throw new RuntimeException("在压缩包中未找到入口文件: " + entryFile);
     }
 
     @Override
