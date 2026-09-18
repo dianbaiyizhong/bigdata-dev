@@ -1,0 +1,16 @@
+services:
+  hdfs:
+    build: .
+    hostname: hdfs.example.com
+    container_name: hdfs-kerberos
+    ports:
+      - "88:88"
+      - "88:88/udp"
+      - "9870:9870"
+      - "8020:8020"
+      - "9864:9864"
+    volumes:
+      - hdfs-data:/data
+
+volumes:
+  hdfs-data:

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>hadoop.http.authentication.kerberos.token-validity</name>
+        <value>3600</value>
+    </property>
+    <property>
+        <name>hadoop.http.authentication.kerberos.name.rules</name>
+        <value>RULE:[1:1]</value>
+    </property>
+    <property>
+        <name>hadoop.http.authentication.type</name>
+        <value>kerberos</value>
+    </property>
+    <property>
+        <name>hadoop.http.authentication.kerberos.principal</name>
+        <value>HTTP/_HOST@EXAMPLE.COM</value>
+    </property>
+    <property>
+        <name>hadoop.http.authentication.kerberos.keytab</name>
+        <value>/etc/security/keytabs/http.keytab</value>
+    </property>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://hdfs.example.com:8020</value>
+    </property>
+    <property>
+        <name>hadoop.security.authentication</name>
+        <value>kerberos</value>
+    </property>
+    <property>
+        <name>hadoop.security.authorization</name>
+        <value>true</value>
+    </property>
+</configuration>

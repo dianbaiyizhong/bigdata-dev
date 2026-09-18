@@ -100,7 +100,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init-scripts:/docker-entrypoint-initdb.d # 挂载初始化脚本目录，脚本一定要create database和use database，不然会no work
-    restart: always
+    restart: unless-stopped
     deploy:
       resources:
         limits:
