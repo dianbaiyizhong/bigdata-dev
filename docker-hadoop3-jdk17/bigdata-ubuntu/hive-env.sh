@@ -76,3 +76,4 @@
 export HADOOP_HEAPSIZE=1024
 HADOOP_HOME=/usr/bigdata/hadoop-3.4.3
 export HIVE_CONF_DIR=/usr/bigdata/apache-hive-4.1.0-bin/conf
+

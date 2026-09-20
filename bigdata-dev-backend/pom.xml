@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version>
+        <version>3.5.3</version>
         <relativePath/>
     </parent>
 
@@ -16,11 +16,10 @@
     <version>1.0</version>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <spark.version>3.2.1</spark.version>
-        <hadoop.version>3.2.0</hadoop.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <java.version>17</java.version>
+        <spark.version>3.5.9</spark.version>
+        <hadoop.version>3.4.3</hadoop.version>
+        <mybatis-plus.version>3.5.7</mybatis-plus.version>
     </properties>
 
     <dependencies>
@@ -31,7 +30,7 @@
 
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
             <version>${mybatis-plus.version}</version>
         </dependency>
 
