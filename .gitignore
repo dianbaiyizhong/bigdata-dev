@@ -18,5 +18,9 @@ bigdata-model/pyspark-demo/metastore_db/
 *.DS_Store
 
 
-/docker/*.gz
-/docker/*.tgz
+
+
+*.gz
+*.tgz
+*.zip
+*.jar
