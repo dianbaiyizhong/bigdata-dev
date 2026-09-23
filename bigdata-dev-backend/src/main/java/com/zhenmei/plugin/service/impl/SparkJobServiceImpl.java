@@ -91,8 +91,9 @@ public class SparkJobServiceImpl implements SparkJobService {
                 launcher = new SparkLauncher()
                         .setAppResource(mainScript)
                         .setMaster(job.getMaster())
-                        .addSparkArg("--archives","hdfs:/user/pyspark-libs/pyspark_env.zip#PY3")
-                        .setConf("spark.executorEnv.PYSPARK_PYTHON", "./PY3/pyspark_env/bin/python")
+                        .addSparkArg("--archives", "hdfs:/user/pyspark-libs/pyspark_env.zip#PY3")
+                        .setConf("spark.executorEnv.PYSPARK_PYTHON", "./PY3/bin/python")
+                        .setConf("spark.yarn.appMasterEnv.PYSPARK_PYTHON", "./PY3/bin/python")
                         .setDeployMode(job.getDeployMode())
                         .setAppName(request.getJobName())
                         .setVerbose(true);

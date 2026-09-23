@@ -30,8 +30,8 @@ public class PySparkZipController {
     @PostMapping("/upload")
     public ApiResponse<PySparkZip> upload(@RequestParam("file") MultipartFile file) throws IOException {
         String originalName = file.getOriginalFilename();
-        if (originalName == null || !originalName.endsWith(".zip")) {
-            return ApiResponse.error("只支持 .zip 文件");
+        if (originalName == null || !isSupportedArchive(originalName)) {
+            return ApiResponse.error("只支持 .zip 或 .tar.gz 文件");
         }
 
         File tempDir = new File(TEMP_DIR);
@@ -60,7 +60,7 @@ public class PySparkZipController {
             fs.copyFromLocalFile(new Path(tempFile.getAbsolutePath()), destPath);
             fs.close();
 
-            log.info("上传 PySpark zip 到 HDFS: {}", hdfsPath);
+            log.info("上传 PySpark 依赖包到 HDFS: {}", hdfsPath);
         } catch (Exception e) {
             log.error("上传到 HDFS 失败", e);
             return ApiResponse.error("上传到 HDFS 失败: " + e.getMessage());
@@ -102,5 +102,10 @@ public class PySparkZipController {
     @GetMapping("/{id}")
     public ApiResponse<PySparkZip> getById(@PathVariable Long id) {
         return ApiResponse.success(pySparkZipService.getById(id));
+    }
+
+    private boolean isSupportedArchive(String fileName) {
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".zip") || lower.endsWith(".tar.gz");
     }
 }
