@@ -203,6 +203,7 @@
           <v-select
             v-model="form.dependencyIds"
             :items="depList"
+            :loading="depLoading"
             :item-title="(item) => `${item.name} (${item._jarCount || 0} 个JAR)`"
             item-value="id"
             multiple
@@ -212,9 +213,10 @@
             persistent-hint
             variant="outlined"
             density="comfortable"
+            @click="loadDeps"
           />
 
-          <div class="mt-4">
+          <div class="submit-bar">
             <v-btn
               color="primary"
               type="submit"
@@ -278,9 +280,12 @@ export default {
       pySparkZipId: null
     })
 
+    const depLoading = ref(false)
+
     const loadDeps = async () => {
+      depLoading.value = true
       try {
-        const res = await getDependencyList(1, 500, '')
+        const res = await getDependencyList(1, 500, '', true)
         depList.value = res.data.records || []
         for (const dep of depList.value) {
           try {
@@ -289,6 +294,7 @@ export default {
           } catch (e) { dep._jarCount = 0 }
         }
       } catch (e) { console.error('加载依赖失败', e) }
+      finally { depLoading.value = false }
     }
 
     const handleDrop = (e) => {
@@ -397,16 +403,34 @@ export default {
     onMounted(loadPySparkZips)
 
     return {
-      formRef, fileInput, pyScriptInput, form, submitting, depList, pySparkZipList,
+      formRef, fileInput, pyScriptInput, form, submitting, depList, depLoading, pySparkZipList,
       selectedFile, dragOver, pyScriptFile, pyDragOver, jsonExtensions,
       handleDrop, handleFileSelect, handlePyDrop, handlePyScriptSelect,
-      formatSize, handleSubmit, resetForm
+      formatSize, handleSubmit, resetForm, loadDeps
     }
   }
 }
 </script>
 
 <style scoped>
+.job-submit {
+  padding-bottom: 80px;
+}
+
+.submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  text-align: right;
+  white-space: nowrap;
+}
+
 .cm-editor-wrapper {
   border: 1px solid rgba(0, 0, 0, 0.24);
   border-radius: 4px;
@@ -426,6 +450,7 @@ export default {
   border: 2px dashed #bbb;
   border-radius: 8px;
   padding: 32px 24px;
+  min-height: 140px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
@@ -450,6 +475,7 @@ export default {
 .drop-zone--has-file {
   flex-direction: row;
   padding: 16px 24px;
+  min-height: 140px;
 }
 
 .spark-icon {

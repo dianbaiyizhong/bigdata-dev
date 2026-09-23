@@ -9,12 +9,13 @@
           <v-col cols="auto" style="flex: 1; max-width: 500px">
             <v-file-input
               v-model="uploadFile"
-              label="选择 .zip 依赖包"
-              accept=".zip"
+              label="选择 .zip 或 .tar.gz 依赖包"
+              accept=".zip,.gz"
               prepend-icon="mdi-folder-zip"
               variant="outlined"
               density="comfortable"
               hide-details
+              @update:model-value="validateUploadFile"
             />
           </v-col>
           <v-col cols="auto">
@@ -129,6 +130,15 @@ export default {
       }
     }
 
+    const validateUploadFile = (file) => {
+      if (!file) return
+      const name = file.name.toLowerCase()
+      if (!name.endsWith('.zip') && !name.endsWith('.tar.gz')) {
+        uploadFile.value = null
+        message.warning('仅支持 .zip 或 .tar.gz 文件')
+      }
+    }
+
     const handleUpload = async () => {
       if (!uploadFile.value) return
       uploading.value = true
@@ -172,7 +182,7 @@ export default {
 
     return {
       uploadFile, uploading, loading, tableData, headers,
-      loadList, handleUpload, handleDelete, formatSize, formatTime
+      loadList, handleUpload, handleDelete, validateUploadFile, formatSize, formatTime
     }
   }
 }

@@ -75,7 +75,8 @@ services:
       - "linux003:172.18.0.13"
       - "mysql:172.18.0.14"
       - "backend:172.18.0.80"
-    restart: unless-stopped
+    command: java -jar /usr/local/bigdata-dev-backend.jar
+    restart: always
     deploy:
       resources:
         limits:

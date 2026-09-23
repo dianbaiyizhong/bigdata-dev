@@ -88,10 +88,13 @@ public class SparkJobServiceImpl implements SparkJobService {
 
             if (isPython) {
                 String mainScript = isZipProject ? extractedEntryPath : scriptPath;
+                String archivePath = StrUtil.isNotBlank(pyZipPath)
+                        ? "hdfs:" + pyZipPath
+                        : "hdfs:/user/pyspark-libs/pyspark_env.zip";
                 launcher = new SparkLauncher()
                         .setAppResource(mainScript)
                         .setMaster(job.getMaster())
-                        .addSparkArg("--archives", "hdfs:/user/pyspark-libs/pyspark_env.zip#PY3")
+                        .addSparkArg("--archives", archivePath + "#PY3")
                         .setConf("spark.executorEnv.PYSPARK_PYTHON", "./PY3/bin/python")
                         .setConf("spark.yarn.appMasterEnv.PYSPARK_PYTHON", "./PY3/bin/python")
                         .setDeployMode(job.getDeployMode())
@@ -100,9 +103,6 @@ public class SparkJobServiceImpl implements SparkJobService {
 
                 if (isZipProject) {
                     launcher.addPyFile(scriptPath);
-                }
-                if (StrUtil.isNotBlank(pyZipPath)) {
-                    launcher.addPyFile(pyZipPath);
                 }
             } else {
                 launcher = new SparkLauncher()

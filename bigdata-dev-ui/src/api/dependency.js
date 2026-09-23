@@ -4,8 +4,10 @@ export function createDependency(name, description) {
   return api.post('/dependency', null, { params: { name, description } })
 }
 
-export function getDependencyList(page = 1, size = 10, keyword = '') {
-  return api.get('/dependency/list', { params: { page, size, keyword } })
+export function getDependencyList(page = 1, size = 10, keyword = '', fresh = false) {
+  const params = { page, size, keyword }
+  if (fresh) params._t = Date.now()
+  return api.get('/dependency/list', { params })
 }
 
 export function deleteDependency(id) {
