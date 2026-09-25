@@ -22,6 +22,8 @@ public class SparkJob {
 
     private String pyZipPath;
 
+    private String entryFile;
+
     private String mainClass;
 
     private String appArgs;

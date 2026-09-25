@@ -80,7 +80,18 @@ public class SparkJobServiceImpl implements SparkJobService {
         job.setExecutorCores(request.getExecutorCores());
         job.setNumExecutors(request.getNumExecutors());
         job.setDependencyIds(request.getDependencyIds());
+        job.setEntryFile(entryFile);
         job.setStatus("SUBMITTING");
+
+        return launchJob(job, extractedEntryPath);
+    }
+
+    private SparkJob launchJob(SparkJob job, String extractedEntryPath) {
+        String scriptPath = job.getScriptPath();
+        boolean isPython = "PYTHON".equalsIgnoreCase(job.getJobType());
+        boolean isZipProject = isPython && StrUtil.isNotBlank(job.getEntryFile())
+                && StrUtil.isNotBlank(scriptPath) && scriptPath.endsWith(".zip");
+
         sparkJobMapper.insert(job);
 
         try {
@@ -88,8 +99,8 @@ public class SparkJobServiceImpl implements SparkJobService {
 
             if (isPython) {
                 String mainScript = isZipProject ? extractedEntryPath : scriptPath;
-                String archivePath = StrUtil.isNotBlank(pyZipPath)
-                        ? "hdfs:" + pyZipPath
+                String archivePath = StrUtil.isNotBlank(job.getPyZipPath())
+                        ? "hdfs:" + job.getPyZipPath()
                         : "hdfs:/user/pyspark-libs/pyspark_env.zip";
                 launcher = new SparkLauncher()
                         .setAppResource(mainScript)
@@ -98,7 +109,7 @@ public class SparkJobServiceImpl implements SparkJobService {
                         .setConf("spark.executorEnv.PYSPARK_PYTHON", "./PY3/bin/python")
                         .setConf("spark.yarn.appMasterEnv.PYSPARK_PYTHON", "./PY3/bin/python")
                         .setDeployMode(job.getDeployMode())
-                        .setAppName(request.getJobName())
+                        .setAppName(job.getJobName())
                         .setVerbose(true);
 
                 if (isZipProject) {
@@ -106,11 +117,11 @@ public class SparkJobServiceImpl implements SparkJobService {
                 }
             } else {
                 launcher = new SparkLauncher()
-                        .setAppResource(jarPath)
-                        .setMainClass(request.getMainClass())
+                        .setAppResource(job.getJarPath())
+                        .setMainClass(job.getMainClass())
                         .setMaster(job.getMaster())
                         .setDeployMode(job.getDeployMode())
-                        .setAppName(request.getJobName())
+                        .setAppName(job.getJobName())
                         .setVerbose(true);
             }
 
@@ -122,26 +133,26 @@ public class SparkJobServiceImpl implements SparkJobService {
                 launcher.setConf("spark.sql.catalogImplementation", "hive");
                 log.info("[JOB-{}] 添加 hive-site.xml: {}", job.getId(), sparkConfig.getHiveSiteXml());
             }
-            if (StrUtil.isNotBlank(request.getAppArgs())) {
-                launcher.addAppArgs(request.getAppArgs().split("\\s+"));
+            if (StrUtil.isNotBlank(job.getAppArgs())) {
+                launcher.addAppArgs(job.getAppArgs().split("\\s+"));
             }
-            if (request.getDriverMemory() != null) {
-                launcher.setConf(SparkLauncher.DRIVER_MEMORY, request.getDriverMemory() + "m");
+            if (job.getDriverMemory() != null) {
+                launcher.setConf(SparkLauncher.DRIVER_MEMORY, job.getDriverMemory() + "m");
             }
-            if (request.getDriverCores() != null) {
-                launcher.setConf("spark.driver.cores", String.valueOf(request.getDriverCores()));
+            if (job.getDriverCores() != null) {
+                launcher.setConf("spark.driver.cores", String.valueOf(job.getDriverCores()));
             }
-            if (request.getExecutorMemory() != null) {
-                launcher.setConf(SparkLauncher.EXECUTOR_MEMORY, request.getExecutorMemory() + "m");
+            if (job.getExecutorMemory() != null) {
+                launcher.setConf(SparkLauncher.EXECUTOR_MEMORY, job.getExecutorMemory() + "m");
             }
-            if (request.getExecutorCores() != null) {
-                launcher.setConf(SparkLauncher.EXECUTOR_CORES, String.valueOf(request.getExecutorCores()));
+            if (job.getExecutorCores() != null) {
+                launcher.setConf(SparkLauncher.EXECUTOR_CORES, String.valueOf(job.getExecutorCores()));
             }
-            if (request.getNumExecutors() != null) {
-                launcher.setConf("spark.executor.instances", String.valueOf(request.getNumExecutors()));
+            if (job.getNumExecutors() != null) {
+                launcher.setConf("spark.executor.instances", String.valueOf(job.getNumExecutors()));
             }
-            if (StrUtil.isNotBlank(request.getSparkProperties())) {
-                for (String prop : request.getSparkProperties().split("\n")) {
+            if (StrUtil.isNotBlank(job.getSparkProperties())) {
+                for (String prop : job.getSparkProperties().split("\n")) {
                     prop = prop.trim();
                     if (prop.isEmpty() || prop.startsWith("#")) continue;
                     String[] kv = prop.split("=", 2);
@@ -151,8 +162,8 @@ public class SparkJobServiceImpl implements SparkJobService {
                 }
             }
 
-            if (StrUtil.isNotBlank(request.getDependencyIds())) {
-                List<Long> depIds = Arrays.stream(request.getDependencyIds().split(","))
+            if (StrUtil.isNotBlank(job.getDependencyIds())) {
+                List<Long> depIds = Arrays.stream(job.getDependencyIds().split(","))
                         .map(Long::parseLong)
                         .collect(Collectors.toList());
                 for (Long depId : depIds) {
@@ -239,7 +250,9 @@ public class SparkJobServiceImpl implements SparkJobService {
 
                     SparkJob j = sparkJobMapper.selectById(jobId);
                     if (j != null) {
-                        if (exitCode == 0) {
+                        if ("KILLED".equals(j.getStatus())) {
+                            log.info("[JOB-{}] 任务已被终止，跳过状态更新", jobId);
+                        } else if (exitCode == 0) {
                             j.setStatus("FINISHED");
                         } else {
                             j.setStatus("FAILED");
@@ -259,7 +272,7 @@ public class SparkJobServiceImpl implements SparkJobService {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     SparkJob j = sparkJobMapper.selectById(jobId);
-                    if (j != null) {
+                    if (j != null && !"KILLED".equals(j.getStatus())) {
                         j.setStatus("FAILED");
                         j.setErrorMsg("任务被中断: " + e.getMessage());
                         sparkJobMapper.updateById(j);
@@ -278,6 +291,49 @@ public class SparkJobServiceImpl implements SparkJobService {
         }
 
         return job;
+    }
+
+    @Override
+    public SparkJob retryJob(Long id) {
+        SparkJob original = sparkJobMapper.selectById(id);
+        if (original == null) {
+            throw new RuntimeException("任务不存在: " + id);
+        }
+        if (!"FAILED".equals(original.getStatus())) {
+            throw new RuntimeException("仅失败状态的任务可以重试，当前状态: " + original.getStatus());
+        }
+
+        SparkJob job = new SparkJob();
+        job.setJobName(original.getJobName());
+        job.setJobType(original.getJobType());
+        job.setJarPath(original.getJarPath());
+        job.setScriptPath(original.getScriptPath());
+        job.setPyZipPath(original.getPyZipPath());
+        job.setEntryFile(original.getEntryFile());
+        job.setMainClass(original.getMainClass());
+        job.setAppArgs(original.getAppArgs());
+        job.setSparkProperties(original.getSparkProperties());
+        job.setDeployMode(original.getDeployMode());
+        job.setMaster(original.getMaster());
+        job.setDriverMemory(original.getDriverMemory());
+        job.setDriverCores(original.getDriverCores());
+        job.setExecutorMemory(original.getExecutorMemory());
+        job.setExecutorCores(original.getExecutorCores());
+        job.setNumExecutors(original.getNumExecutors());
+        job.setDependencyIds(original.getDependencyIds());
+        job.setStatus("SUBMITTING");
+
+        String extractedEntryPath = null;
+        boolean isZipProject = "PYTHON".equalsIgnoreCase(job.getJobType())
+                && StrUtil.isNotBlank(job.getEntryFile())
+                && StrUtil.isNotBlank(job.getScriptPath()) && job.getScriptPath().endsWith(".zip");
+        if (isZipProject) {
+            extractedEntryPath = extractEntryFromZip(job.getScriptPath(), job.getEntryFile());
+            log.info("[JOB-{}] 重试: 从 zip 重新提取入口文件 {} -> {}", id, job.getEntryFile(), extractedEntryPath);
+        }
+
+        log.info("[JOB-{}] 重试失败任务，复用配置启动新记录", id);
+        return launchJob(job, extractedEntryPath);
     }
 
     private String extractEntryFromZip(String zipPath, String entryFile) {
@@ -318,22 +374,45 @@ public class SparkJobServiceImpl implements SparkJobService {
     }
 
     @Override
-    public void killJob(Long id) {
+    public String killJob(Long id) {
         SparkJob job = sparkJobMapper.selectById(id);
-        if (job != null && "RUNNING".equals(job.getStatus())) {
-            if (StrUtil.isNotBlank(job.getAppId())) {
-                try {
-                    Process p = Runtime.getRuntime().exec(new String[]{
-                            "yarn", "application", "-kill", job.getAppId()
-                    });
-                    p.waitFor();
-                    log.info("[JOB-{}] YARN application {} killed", id, job.getAppId());
-                } catch (Exception e) {
-                    log.error("[JOB-{}] kill YARN 失败: {}", id, e.getMessage());
-                }
+        if (job == null) {
+            return "任务不存在: " + id;
+        }
+        if (!"RUNNING".equals(job.getStatus())) {
+            return "当前状态 " + job.getStatus() + ", 无法终止";
+        }
+        if (StrUtil.isBlank(job.getAppId())) {
+            return "尚未捕获到 appId, 无法通过 yarn 终止";
+        }
+        try {
+            ProcessBuilder pb = new ProcessBuilder("yarn", "application", "-kill", job.getAppId());
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            String output = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = p.waitFor();
+            if (exitCode == 0) {
+                log.info("[JOB-{}] YARN application {} killed: {}", id, job.getAppId(), output.trim());
+                job.setStatus("KILLED");
+                sparkJobMapper.updateById(job);
+                return null;
+            } else {
+                log.error("[JOB-{}] yarn kill 失败, exitCode={}, output:\n{}", id, exitCode, output);
+                job.setErrorMsg("终止 YARN application 失败: " + output.trim());
+                sparkJobMapper.updateById(job);
+                return "终止 YARN application 失败: " + output.trim();
             }
-            job.setStatus("KILLED");
+        } catch (IOException e) {
+            log.error("[JOB-{}] kill YARN 失败, yarn 命令不可用或构建失败: {}", id, e.getMessage());
+            job.setErrorMsg("终止失败: yarn 命令执行异常 - " + e.getMessage());
             sparkJobMapper.updateById(job);
+            return "终止失败: yarn 命令执行异常 - " + e.getMessage();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("[JOB-{}] kill YARN 被中断: {}", id, e.getMessage());
+            job.setErrorMsg("终止失败: " + e.getMessage());
+            sparkJobMapper.updateById(job);
+            return "终止失败: " + e.getMessage();
         }
     }
 }

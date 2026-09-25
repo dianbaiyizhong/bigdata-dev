@@ -12,5 +12,7 @@ public interface SparkJobService {
 
     Page<SparkJob> listJobs(int page, int size);
 
-    void killJob(Long id);
+    String killJob(Long id);
+
+    SparkJob retryJob(Long id);
 }

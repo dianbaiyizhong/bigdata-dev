@@ -98,7 +98,15 @@ public class SparkJobController {
 
     @PostMapping("/{id}/kill")
     public ApiResponse<Void> kill(@PathVariable Long id) {
-        sparkJobService.killJob(id);
-        return ApiResponse.success();
+        String error = sparkJobService.killJob(id);
+        if (error == null) {
+            return ApiResponse.success();
+        }
+        return ApiResponse.error(error);
+    }
+
+    @PostMapping("/{id}/retry")
+    public ApiResponse<SparkJob> retry(@PathVariable Long id) {
+        return ApiResponse.success(sparkJobService.retryJob(id));
     }
 }

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS t_spark_job (
     jar_path VARCHAR(512),
     script_path VARCHAR(512),
     py_zip_path VARCHAR(512),
+    entry_file VARCHAR(256),
     main_class VARCHAR(512),
     app_args VARCHAR(1024),
     app_id VARCHAR(128),

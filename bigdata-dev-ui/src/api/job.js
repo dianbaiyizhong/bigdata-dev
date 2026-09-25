@@ -15,3 +15,7 @@ export function getJobById(id) {
 export function killJob(id) {
   return api.post(`/job/${id}/kill`)
 }
+
+export function retryJob(id) {
+  return api.post(`/job/${id}/retry`)
+}

@@ -27,6 +27,11 @@
               size="small"
               label
             >
+              <v-icon
+                v-if="item.status === 'RUNNING'"
+                class="mdi-spin me-1"
+                size="14"
+              >mdi-loading</v-icon>
               {{ statusLabel(item.status) }}
             </v-chip>
           </template>
@@ -93,6 +98,16 @@
               @click="showDetail(item)"
             >
               详情
+            </v-btn>
+            <v-btn
+              color="warning"
+              size="small"
+              variant="tonal"
+              class="mr-2"
+              :disabled="item.status !== 'FAILED'"
+              @click="handleRetry(item)"
+            >
+              重试
             </v-btn>
             <v-btn
               color="error"
@@ -174,7 +189,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { getJobList, killJob } from '../api/job'
+import { getJobList, killJob, retryJob } from '../api/job'
 import { useMessage } from '../composables/message'
 
 export default {
@@ -222,6 +237,17 @@ export default {
       }
     }
 
+    const handleRetry = async (row) => {
+      try {
+        await message.confirm(`确定要重试任务「${row.jobName}」吗？将基于原配置重新提交一次任务。`)
+        await retryJob(row.id)
+        message.success('已提交重试任务')
+        loadData()
+      } catch (e) {
+        if (e !== 'cancel') message.error('重试失败：' + (e.message || '未知错误'))
+      }
+    }
+
     const showDetail = (row) => {
       currentJob.value = row
       detailDialogVisible.value = true
@@ -244,7 +270,7 @@ export default {
 
     onMounted(loadData)
 
-    return { loading, tableData, headers, page, size, total, currentJob, detailDialogVisible, loadData, handleKill, showDetail, statusColor, statusLabel, formatTime }
+    return { loading, tableData, headers, page, size, total, currentJob, detailDialogVisible, loadData, handleKill, handleRetry, showDetail, statusColor, statusLabel, formatTime }
   }
 }
 </script>

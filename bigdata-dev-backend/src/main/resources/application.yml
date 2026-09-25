@@ -17,7 +17,7 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     db-config:
       id-type: auto
@@ -28,4 +28,4 @@ spark:
   deploy-mode: ${SPARK_DEPLOY_MODE:cluster}
   hadoop-conf-dir: ${HADOOP_CONF_DIR:}
   yarn-staging-dir: /user/root/.sparkStaging/
-  hive-site-xml: ${HIVE_SITE_XML:/usr/bigdata/apache-hive-4.1.0-bin/conf/hive-site.xml}
+  hive-site-xml: ${HIVE_SITE_XML:/usr/bigdata/apache-hive-3.1.3-bin/conf/hive-site.xml}

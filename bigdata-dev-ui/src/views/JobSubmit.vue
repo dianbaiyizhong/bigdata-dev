@@ -37,6 +37,7 @@
               >
                 <input ref="fileInput" type="file" accept=".jar" hidden @change="handleFileSelect" />
                 <template v-if="selectedFile">
+                  <v-icon color="success" size="24" class="mr-1">mdi-check-circle</v-icon>
                   <v-icon color="primary" size="24" class="mr-2">mdi-file-code</v-icon>
                   <span class="text-body-2">{{ selectedFile.name }}</span>
                   <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(selectedFile.size) }})</span>
@@ -74,6 +75,7 @@
               >
                 <input ref="pyScriptInput" type="file" accept=".py,.zip" hidden @change="handlePyScriptSelect" />
                 <template v-if="pyScriptFile">
+                  <v-icon color="success" size="24" class="mr-1">mdi-check-circle</v-icon>
                   <v-icon color="primary" size="24" class="mr-2">mdi-language-python</v-icon>
                   <span class="text-body-2">{{ pyScriptFile.name }}</span>
                   <span class="text-caption text-medium-emphasis ml-2">({{ formatSize(pyScriptFile.size) }})</span>
@@ -302,6 +304,7 @@ export default {
       const files = e.dataTransfer?.files
       if (files && files.length > 0 && files[0].name.endsWith('.jar')) {
         selectedFile.value = files[0]
+        message.success(`已选择文件：${files[0].name} (${formatSize(files[0].size)})`)
       } else {
         message.warning('请选择 .jar 文件')
       }
@@ -309,7 +312,10 @@ export default {
 
     const handleFileSelect = (e) => {
       const file = e.target.files?.[0]
-      if (file) selectedFile.value = file
+      if (file) {
+        selectedFile.value = file
+        message.success(`已选择文件：${file.name} (${formatSize(file.size)})`)
+      }
     }
 
     const handlePyDrop = (e) => {
@@ -319,6 +325,7 @@ export default {
       const name = files[0].name.toLowerCase()
       if (name.endsWith('.py') || name.endsWith('.zip')) {
         pyScriptFile.value = files[0]
+        message.success(`已选择文件：${files[0].name} (${formatSize(files[0].size)})`)
       } else {
         message.warning('请选择 .py 或 .zip 文件')
       }
@@ -326,7 +333,10 @@ export default {
 
     const handlePyScriptSelect = (e) => {
       const file = e.target.files?.[0]
-      if (file) pyScriptFile.value = file
+      if (file) {
+        pyScriptFile.value = file
+        message.success(`已选择文件：${file.name} (${formatSize(file.size)})`)
+      }
     }
 
     const formatSize = (bytes) => {
