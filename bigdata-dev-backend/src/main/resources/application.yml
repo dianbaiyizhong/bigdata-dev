@@ -1,5 +1,8 @@
 server:
   port: 12408
+  tomcat:
+    max-part-count: 20
+    max-part-header-size: 8KB
 
 spring:
   application:
@@ -13,6 +16,10 @@ spring:
     multipart:
       max-file-size: 2500MB
       max-request-size: 2500MB
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:job-template.sql
 
 mybatis-plus:
   configuration:

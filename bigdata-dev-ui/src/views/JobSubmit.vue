@@ -205,8 +205,8 @@
           <v-select
             v-model="form.dependencyIds"
             :items="depList"
-            :loading="depLoading"
-            :item-title="(item) => `${item.name} (${item._jarCount || 0} 个JAR)`"
+              :loading="depLoading"
+              :item-title="dependencyItemTitle"
             item-value="id"
             multiple
             chips
@@ -223,17 +223,80 @@
               color="primary"
               type="submit"
               :loading="submitting"
+              :disabled="templateSaving"
               class="mr-3"
             >
               提交任务
             </v-btn>
-            <v-btn @click="resetForm">
+            <v-btn
+              type="button"
+              color="primary"
+              variant="tonal"
+              :loading="templateSaving"
+              :disabled="submitting || templateSaving"
+              class="mr-3"
+              @click="openTemplateDialog"
+            >
+              保存任务模板
+            </v-btn>
+            <v-btn
+              type="button"
+              @click="resetForm"
+            >
               重置
             </v-btn>
           </div>
         </v-form>
       </v-card-text>
     </v-card>
+
+    <v-dialog v-model="templateDialogVisible" max-width="480">
+      <v-card>
+        <v-card-title class="text-h6">保存任务模板</v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-text-field
+            v-model.trim="templateForm.templateName"
+            label="模板名称"
+            placeholder="请输入模板名称"
+            maxlength="255"
+            :rules="[v => !!v || '请输入模板名称']"
+            variant="outlined"
+            density="comfortable"
+            autofocus
+          />
+          <v-textarea
+            v-model="templateForm.description"
+            label="描述"
+            placeholder="描述（可选）"
+            rows="3"
+            variant="outlined"
+            density="comfortable"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            type="button"
+            variant="text"
+            :disabled="templateSaving"
+            @click="templateDialogVisible = false"
+          >
+            取消
+          </v-btn>
+          <v-btn
+            type="button"
+            color="primary"
+            variant="text"
+            :loading="templateSaving"
+            :disabled="!templateForm.templateName.trim()"
+            @click="saveTemplate"
+          >
+            保存
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -244,6 +307,7 @@ import { Codemirror } from 'vue-codemirror'
 import { json } from '@codemirror/lang-json'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { submitJob } from '../api/job'
+import { saveJobTemplate } from '../api/jobTemplate'
 import { getDependencyList, getDependencyJars } from '../api/dependency'
 import { getPySparkZipList } from '../api/pyspark'
 import { useMessage } from '../composables/message'
@@ -256,6 +320,8 @@ export default {
     const fileInput = ref(null)
     const pyScriptInput = ref(null)
     const submitting = ref(false)
+    const templateDialogVisible = ref(false)
+    const templateSaving = ref(false)
     const depList = ref([])
     const pySparkZipList = ref([])
     const selectedFile = ref(null)
@@ -279,24 +345,46 @@ export default {
       numExecutors: 2,
       sparkProperties: '',
       dependencyIds: [],
-      pySparkZipId: null
+      pySparkZipId: null,
+      deployMode: 'cluster',
+      master: 'yarn'
+    })
+
+    const templateForm = reactive({
+      templateName: '',
+      description: ''
     })
 
     const depLoading = ref(false)
+
+    const dependencyItemTitle = (item) => {
+      const countText = item._jarLoadError ? '加载失败' : `${item._jarCount || 0} 个JAR`
+      return `${item.name || '未命名依赖组'} (${countText})`
+    }
 
     const loadDeps = async () => {
       depLoading.value = true
       try {
         const res = await getDependencyList(1, 500, '', true)
-        depList.value = res.data.records || []
+        const data = res?.data && typeof res.data === 'object' ? res.data : {}
+        depList.value = Array.isArray(data.records) ? data.records : []
         for (const dep of depList.value) {
+          dep._jarLoadError = false
           try {
             const jRes = await getDependencyJars(dep.id)
-            dep._jarCount = (jRes.data || []).length
-          } catch (e) { dep._jarCount = 0 }
+            dep._jarCount = Array.isArray(jRes?.data) ? jRes.data.length : 0
+          } catch (e) {
+            dep._jarCount = null
+            dep._jarLoadError = true
+            message.error(`依赖组「${dep.name || dep.id}」的JAR加载失败`)
+          }
         }
-      } catch (e) { console.error('加载依赖失败', e) }
-      finally { depLoading.value = false }
+      } catch (e) {
+        depList.value = []
+        message.error('加载依赖失败: ' + (e.message || '未知错误'))
+      } finally {
+        depLoading.value = false
+      }
     }
 
     const handleDrop = (e) => {
@@ -345,21 +433,85 @@ export default {
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
     }
 
-    const handleSubmit = async () => {
+    const validateSubmission = async () => {
       const isPySpark = form.jobType === 'PYTHON'
 
       if (isPySpark && !pyScriptFile.value) {
         message.warning('请上传 Python 脚本或工程包')
-        return
+        return false
       }
       if (!isPySpark && !selectedFile.value) {
         message.warning('请上传 JAR 文件')
+        return false
+      }
+
+      const result = formRef.value ? await formRef.value.validate() : { valid: false }
+      return result?.valid === true
+    }
+
+    const buildTemplateFormData = () => {
+      const fd = new FormData()
+      if (form.jobType === 'PYTHON') {
+        fd.append('pyScript', pyScriptFile.value)
+      } else {
+        fd.append('file', selectedFile.value)
+      }
+      fd.append('templateName', templateForm.templateName.trim())
+      fd.append('description', templateForm.description || '')
+      fd.append('jobType', form.jobType)
+      fd.append('mainClass', form.mainClass || '')
+      fd.append('entryFile', form.entryFile || '')
+      fd.append('appArgs', form.appArgs || '')
+      fd.append('sparkProperties', form.sparkProperties || '')
+      fd.append('deployMode', form.deployMode || 'cluster')
+      fd.append('master', form.master || 'yarn')
+      fd.append('driverMemory', form.driverMemory ?? '')
+      fd.append('driverCores', form.driverCores ?? '')
+      fd.append('executorMemory', form.executorMemory ?? '')
+      fd.append('executorCores', form.executorCores ?? '')
+      fd.append('numExecutors', form.numExecutors ?? '')
+      const dependencyIds = Array.isArray(form.dependencyIds) ? form.dependencyIds : []
+      fd.append('dependencyIds', dependencyIds.join(','))
+      if (form.pySparkZipId !== null && form.pySparkZipId !== undefined && form.pySparkZipId !== '') {
+        fd.append('pySparkZipId', form.pySparkZipId)
+      }
+      return fd
+    }
+
+    const openTemplateDialog = async () => {
+      if (!(await validateSubmission())) return
+      templateForm.templateName = form.jobName
+      templateForm.description = ''
+      templateDialogVisible.value = true
+    }
+
+    const saveTemplate = async () => {
+      if (!templateForm.templateName.trim()) {
+        message.warning('请输入模板名称')
+        return
+      }
+      if (!(await validateSubmission())) return
+      if (form.jobType === 'PYTHON' && pyScriptFile.value?.name.toLowerCase().endsWith('.zip') && !String(form.entryFile || '').trim()) {
+        message.warning('Python ZIP工程包必须填写入口文件')
         return
       }
 
-      const result = await formRef.value.validate()
-      if (!result.valid) return
+      templateSaving.value = true
+      try {
+        await saveJobTemplate(buildTemplateFormData())
+        templateDialogVisible.value = false
+        message.success('任务模板保存成功')
+      } catch (e) {
+        message.error('保存任务模板失败: ' + (e.message || '未知错误'))
+      } finally {
+        templateSaving.value = false
+      }
+    }
 
+    const handleSubmit = async () => {
+      if (!(await validateSubmission())) return
+
+      const isPySpark = form.jobType === 'PYTHON'
       submitting.value = true
       try {
         const fd = new FormData()
@@ -412,11 +564,17 @@ export default {
 
     onMounted(loadPySparkZips)
 
+    const reload = () => {
+      loadDeps()
+      loadPySparkZips()
+    }
+
     return {
       formRef, fileInput, pyScriptInput, form, submitting, depList, depLoading, pySparkZipList,
       selectedFile, dragOver, pyScriptFile, pyDragOver, jsonExtensions,
+      templateDialogVisible, templateSaving, templateForm,
       handleDrop, handleFileSelect, handlePyDrop, handlePyScriptSelect,
-      formatSize, handleSubmit, resetForm, loadDeps
+      formatSize, dependencyItemTitle, openTemplateDialog, saveTemplate, handleSubmit, resetForm, loadDeps, reload
     }
   }
 }

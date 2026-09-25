@@ -20,4 +20,5 @@ public class JobSubmitRequest {
     private String dependencyIds;
     private Long pySparkZipId;
     private String entryFile;
+    private Long templateId;
 }

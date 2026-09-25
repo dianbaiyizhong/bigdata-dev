@@ -23,6 +23,13 @@
           @click="switchTab('/job/submit')"
         />
         <v-list-item
+          prepend-icon="mdi-content-save-outline"
+          title="任务模板"
+          :active="activePath === '/job-template'"
+          color="primary"
+          @click="switchTab('/job-template')"
+        />
+        <v-list-item
           prepend-icon="mdi-format-list-bulleted"
           title="任务列表"
           :active="activePath === '/job/list'"
@@ -69,10 +76,11 @@
       </div>
 
       <div style="flex: 1; padding: 24px; overflow-y: auto;">
-        <JobSubmit v-show="activePath === '/job/submit'" />
-        <JobList v-show="activePath === '/job/list'" />
-        <DependencyManage v-show="activePath === '/dependency'" />
-        <PySparkManage v-show="activePath === '/pyspark'" />
+        <JobSubmit v-show="activePath === '/job/submit'" ref="jobSubmitRef" />
+        <JobTemplate v-show="activePath === '/job-template'" ref="jobTemplateRef" />
+        <JobList v-show="activePath === '/job/list'" ref="jobListRef" />
+        <DependencyManage v-show="activePath === '/dependency'" ref="dependencyRef" />
+        <PySparkManage v-show="activePath === '/pyspark'" ref="pySparkRef" />
       </div>
     </v-main>
 
@@ -103,15 +111,17 @@
 </template>
 
 <script>
-import { reactive, provide, ref, watch } from 'vue'
+import { reactive, provide, ref, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import JobSubmit from './views/JobSubmit.vue'
+import JobTemplate from './views/JobTemplate.vue'
 import JobList from './views/JobList.vue'
 import DependencyManage from './views/DependencyManage.vue'
 import PySparkManage from './views/PySparkManage.vue'
 
 const routeMeta = {
   '/job/submit': { title: '提交任务', icon: 'mdi-upload' },
+  '/job-template': { title: '任务模板', icon: 'mdi-content-save-outline' },
   '/job/list': { title: '任务列表', icon: 'mdi-format-list-bulleted' },
   '/dependency': { title: '依赖管理', icon: 'mdi-package-variant-closed' },
   '/pyspark': { title: 'PySpark包', icon: 'mdi-language-python' }
@@ -119,12 +129,35 @@ const routeMeta = {
 
 export default {
   name: 'App',
-  components: { JobSubmit, JobList, DependencyManage, PySparkManage },
+  components: { JobSubmit, JobTemplate, JobList, DependencyManage, PySparkManage },
   setup() {
     const router = useRouter()
     const route = useRoute()
     const tabs = ref([])
     const activePath = ref(route.path === '/' ? '/job/submit' : route.path)
+
+    const jobSubmitRef = ref(null)
+    const jobTemplateRef = ref(null)
+    const jobListRef = ref(null)
+    const dependencyRef = ref(null)
+    const pySparkRef = ref(null)
+
+    const viewRefs = {
+      '/job/submit': jobSubmitRef,
+      '/job-template': jobTemplateRef,
+      '/job/list': jobListRef,
+      '/dependency': dependencyRef,
+      '/pyspark': pySparkRef
+    }
+
+    const refreshView = (path) => {
+      nextTick(() => {
+        const inst = viewRefs[path]?.value
+        if (inst && typeof inst.reload === 'function') {
+          inst.reload()
+        }
+      })
+    }
 
     const switchTab = (path) => {
       activePath.value = path
@@ -132,6 +165,7 @@ export default {
       if (!tabs.value.find(t => t.path === path)) {
         tabs.value.push({ path, ...routeMeta[path] })
       }
+      refreshView(path)
     }
 
     const closeTab = (tab) => {
@@ -155,8 +189,10 @@ export default {
       }
     })
 
-    // init first tab
     tabs.value = [{ path: '/job/submit', ...routeMeta['/job/submit'] }]
+    if (activePath.value !== '/job/submit') {
+      tabs.value.push({ path: activePath.value, ...routeMeta[activePath.value] })
+    }
 
     const snackbar = reactive({
       show: false,
@@ -193,7 +229,7 @@ export default {
       confirm
     })
 
-    return { snackbar, confirmDialog, tabs, activePath, switchTab, closeTab }
+    return { snackbar, confirmDialog, tabs, activePath, switchTab, closeTab, jobSubmitRef, jobTemplateRef, jobListRef, dependencyRef, pySparkRef }
   }
 }
 </script>

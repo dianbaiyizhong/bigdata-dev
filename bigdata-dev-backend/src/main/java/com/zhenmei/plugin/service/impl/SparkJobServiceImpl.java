@@ -7,10 +7,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhenmei.plugin.config.SparkConfig;
 import com.zhenmei.plugin.dto.JobSubmitRequest;
 import com.zhenmei.plugin.entity.DependencyJar;
+import com.zhenmei.plugin.entity.JobTemplate;
 import com.zhenmei.plugin.entity.PySparkZip;
 import com.zhenmei.plugin.entity.SparkJob;
 import com.zhenmei.plugin.mapper.SparkJobMapper;
 import com.zhenmei.plugin.service.DependencyService;
+import com.zhenmei.plugin.service.JobTemplateService;
 import com.zhenmei.plugin.service.PySparkZipService;
 import com.zhenmei.plugin.service.SparkJobService;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +23,12 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,9 +45,30 @@ public class SparkJobServiceImpl implements SparkJobService {
     private final DependencyService dependencyService;
     private final SparkConfig sparkConfig;
     private final PySparkZipService pySparkZipService;
+    private final JobTemplateService jobTemplateService;
+
+    private static final Set<String> RETRYABLE_STATUSES = Set.of("FAILED", "KILLED", "FINISHED");
 
     @Override
     public SparkJob submitJob(JobSubmitRequest request, String jarPath, String scriptPath) {
+        if (request == null) {
+            request = new JobSubmitRequest();
+        }
+
+        if (request.getTemplateId() != null) {
+            JobTemplate template = getTemplate(request.getTemplateId());
+            validateTemplateFiles(template);
+            request = mergeTemplateRequest(request, template);
+            jarPath = template.getJarPath();
+            scriptPath = template.getScriptPath();
+        } else if (StrUtil.isBlank(request.getJobType())) {
+            request.setJobType("JAR");
+        }
+
+        if (StrUtil.isBlank(request.getJobName())) {
+            throw new IllegalArgumentException("jobName不能为空");
+        }
+
         boolean isPython = "PYTHON".equalsIgnoreCase(request.getJobType());
 
         String pyZipPath = null;
@@ -55,7 +81,7 @@ public class SparkJobServiceImpl implements SparkJobService {
 
         String entryFile = request.getEntryFile();
         boolean isZipProject = isPython && StrUtil.isNotBlank(entryFile)
-                && StrUtil.isNotBlank(scriptPath) && scriptPath.endsWith(".zip");
+                && StrUtil.isNotBlank(scriptPath) && scriptPath.toLowerCase(Locale.ROOT).endsWith(".zip");
 
         String extractedEntryPath = null;
         if (isZipProject) {
@@ -84,6 +110,92 @@ public class SparkJobServiceImpl implements SparkJobService {
         job.setStatus("SUBMITTING");
 
         return launchJob(job, extractedEntryPath);
+    }
+
+    private JobTemplate getTemplate(Long templateId) {
+        if (jobTemplateService == null) {
+            throw new IllegalStateException("任务模板服务未配置");
+        }
+        JobTemplate template = jobTemplateService.getById(templateId);
+        if (template == null) {
+            throw new IllegalArgumentException("任务模板不存在: " + templateId);
+        }
+        return template;
+    }
+
+    private void validateTemplateFiles(JobTemplate template) {
+        String jobType = StrUtil.blankToDefault(template.getJobType(), "JAR").toUpperCase(Locale.ROOT);
+        String filePath;
+        String fileType;
+        if ("JAR".equals(jobType)) {
+            filePath = template.getJarPath();
+            fileType = "JAR";
+        } else if ("PYTHON".equals(jobType)) {
+            filePath = template.getScriptPath();
+            fileType = "Python";
+            if (StrUtil.isNotBlank(filePath)
+                    && filePath.toLowerCase(Locale.ROOT).endsWith(".zip")
+                    && StrUtil.isBlank(template.getEntryFile())) {
+                throw new IllegalArgumentException("Python ZIP任务模板缺少entryFile");
+            }
+        } else {
+            throw new IllegalArgumentException("任务模板jobType不合法: " + template.getJobType());
+        }
+
+        if (StrUtil.isBlank(filePath) || !isRegularFile(filePath)) {
+            throw new IllegalArgumentException("任务模板文件不存在: " + template.getTemplateName()
+                    + " (" + fileType + ")");
+        }
+    }
+
+    private boolean isRegularFile(String value) {
+        try {
+            return Files.isRegularFile(Paths.get(value));
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    JobSubmitRequest mergeTemplateRequest(JobSubmitRequest request, JobTemplate template) {
+        if (template == null) {
+            throw new IllegalArgumentException("任务模板不能为空");
+        }
+        if (request == null) {
+            request = new JobSubmitRequest();
+        }
+
+        JobSubmitRequest merged = new JobSubmitRequest();
+        merged.setTemplateId(request.getTemplateId());
+        merged.setJobName(request.getJobName() != null
+                ? request.getJobName()
+                : StrUtil.blankToDefault(template.getTemplateName(), "template-" + template.getId()));
+        merged.setJobType(StrUtil.blankToDefault(template.getJobType(), "JAR"));
+        merged.setMainClass(template.getMainClass());
+        merged.setEntryFile(template.getEntryFile());
+        merged.setPySparkZipId(template.getPySparkZipId());
+        merged.setDependencyIds(template.getDependencyIds());
+        merged.setAppArgs(request.getAppArgs() != null ? request.getAppArgs() : template.getAppArgs());
+        merged.setSparkProperties(request.getSparkProperties() != null
+                ? request.getSparkProperties()
+                : template.getSparkProperties());
+        merged.setDeployMode(template.getDeployMode());
+        merged.setMaster(template.getMaster());
+        merged.setDriverMemory(request.getDriverMemory() != null
+                ? request.getDriverMemory()
+                : template.getDriverMemory());
+        merged.setDriverCores(request.getDriverCores() != null
+                ? request.getDriverCores()
+                : template.getDriverCores());
+        merged.setExecutorMemory(request.getExecutorMemory() != null
+                ? request.getExecutorMemory()
+                : template.getExecutorMemory());
+        merged.setExecutorCores(request.getExecutorCores() != null
+                ? request.getExecutorCores()
+                : template.getExecutorCores());
+        merged.setNumExecutors(request.getNumExecutors() != null
+                ? request.getNumExecutors()
+                : template.getNumExecutors());
+        return merged;
     }
 
     private SparkJob launchJob(SparkJob job, String extractedEntryPath) {
@@ -299,8 +411,8 @@ public class SparkJobServiceImpl implements SparkJobService {
         if (original == null) {
             throw new RuntimeException("任务不存在: " + id);
         }
-        if (!"FAILED".equals(original.getStatus())) {
-            throw new RuntimeException("仅失败状态的任务可以重试，当前状态: " + original.getStatus());
+        if (!RETRYABLE_STATUSES.contains(original.getStatus())) {
+            throw new RuntimeException("仅已结束(失败/终止/已完成)状态的任务可以重试，当前状态: " + original.getStatus());
         }
 
         SparkJob job = new SparkJob();
@@ -332,7 +444,7 @@ public class SparkJobServiceImpl implements SparkJobService {
             log.info("[JOB-{}] 重试: 从 zip 重新提取入口文件 {} -> {}", id, job.getEntryFile(), extractedEntryPath);
         }
 
-        log.info("[JOB-{}] 重试失败任务，复用配置启动新记录", id);
+        log.info("[JOB-{}] 重试任务(原状态: {}), 复用配置启动新记录", id, original.getStatus());
         return launchJob(job, extractedEntryPath);
     }
 

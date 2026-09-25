@@ -355,9 +355,11 @@ export default {
 
     onMounted(loadList)
 
+    const reload = () => { loadList() }
+
     return {
       creating, newDepForm, createDep,
-      loading, tableData, depHeaders, page, size, total, keyword, loadList, handleDelete,
+      loading, tableData, depHeaders, page, size, total, keyword, loadList, reload, handleDelete,
       jarDialogVisible, currentDep, jarUploading, jarsLoading,
       currentJars, pendingFiles, jarHeaders,
       openJarDialog, closeJarDialog, uploadJarsToDep, deleteJar, formatSize, formatTime

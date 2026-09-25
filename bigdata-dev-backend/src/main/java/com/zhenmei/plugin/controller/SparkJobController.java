@@ -27,8 +27,8 @@ public class SparkJobController {
     public ApiResponse<SparkJob> submit(
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "pyScript", required = false) MultipartFile pyScript,
-            @RequestParam String jobName,
-            @RequestParam String jobType,
+            @RequestParam(required = false) String jobName,
+            @RequestParam(required = false) String jobType,
             @RequestParam(required = false) String mainClass,
             @RequestParam(required = false) String appArgs,
             @RequestParam(required = false) String deployMode,
@@ -41,7 +41,8 @@ public class SparkJobController {
             @RequestParam(required = false) String sparkProperties,
             @RequestParam(required = false) String dependencyIds,
             @RequestParam(required = false) Long pySparkZipId,
-            @RequestParam(required = false) String entryFile) throws IOException {
+            @RequestParam(required = false) String entryFile,
+            @RequestParam(required = false) Long templateId) throws IOException {
 
         JobSubmitRequest request = new JobSubmitRequest();
         request.setJobName(jobName);
@@ -59,26 +60,29 @@ public class SparkJobController {
         request.setDependencyIds(dependencyIds);
         request.setPySparkZipId(pySparkZipId);
         request.setEntryFile(entryFile);
+        request.setTemplateId(templateId);
 
         String jarPath = null;
         String scriptPath = null;
 
-        if (file != null && !file.isEmpty()) {
-            File dir = new File(JAR_DIR);
-            if (!dir.exists()) dir.mkdirs();
-            String savedName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            File dest = new File(dir, savedName);
-            file.transferTo(dest);
-            jarPath = dest.getAbsolutePath();
-        }
+        if (templateId == null) {
+            if (file != null && !file.isEmpty()) {
+                File dir = new File(JAR_DIR);
+                if (!dir.exists()) dir.mkdirs();
+                String savedName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                File dest = new File(dir, savedName);
+                file.transferTo(dest);
+                jarPath = dest.getAbsolutePath();
+            }
 
-        if (pyScript != null && !pyScript.isEmpty()) {
-            File dir = new File(SCRIPT_DIR);
-            if (!dir.exists()) dir.mkdirs();
-            String savedName = System.currentTimeMillis() + "_" + pyScript.getOriginalFilename();
-            File dest = new File(dir, savedName);
-            pyScript.transferTo(dest);
-            scriptPath = dest.getAbsolutePath();
+            if (pyScript != null && !pyScript.isEmpty()) {
+                File dir = new File(SCRIPT_DIR);
+                if (!dir.exists()) dir.mkdirs();
+                String savedName = System.currentTimeMillis() + "_" + pyScript.getOriginalFilename();
+                File dest = new File(dir, savedName);
+                pyScript.transferTo(dest);
+                scriptPath = dest.getAbsolutePath();
+            }
         }
 
         return ApiResponse.success(sparkJobService.submitJob(request, jarPath, scriptPath));

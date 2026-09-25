@@ -180,9 +180,11 @@ export default {
 
     onMounted(loadList)
 
+    const reload = () => { loadList() }
+
     return {
       uploadFile, uploading, loading, tableData, headers,
-      loadList, handleUpload, handleDelete, validateUploadFile, formatSize, formatTime
+      loadList, reload, handleUpload, handleDelete, validateUploadFile, formatSize, formatTime
     }
   }
 }

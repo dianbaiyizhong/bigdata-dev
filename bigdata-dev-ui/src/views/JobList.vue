@@ -104,7 +104,7 @@
               size="small"
               variant="tonal"
               class="mr-2"
-              :disabled="item.status !== 'FAILED'"
+              :disabled="!['FAILED', 'KILLED', 'FINISHED'].includes(item.status)"
               @click="handleRetry(item)"
             >
               重试
@@ -239,7 +239,7 @@ export default {
 
     const handleRetry = async (row) => {
       try {
-        await message.confirm(`确定要重试任务「${row.jobName}」吗？将基于原配置重新提交一次任务。`)
+        await message.confirm(`确定要重试任务「${row.jobName}」吗？将基于原配置重新提交一次新任务，原记录保留。`)
         await retryJob(row.id)
         message.success('已提交重试任务')
         loadData()
@@ -270,7 +270,9 @@ export default {
 
     onMounted(loadData)
 
-    return { loading, tableData, headers, page, size, total, currentJob, detailDialogVisible, loadData, handleKill, handleRetry, showDetail, statusColor, statusLabel, formatTime }
+    const reload = loadData
+
+    return { loading, tableData, headers, page, size, total, currentJob, detailDialogVisible, loadData, reload, handleKill, handleRetry, showDetail, statusColor, statusLabel, formatTime }
   }
 }
 </script>
