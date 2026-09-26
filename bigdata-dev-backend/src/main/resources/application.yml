@@ -16,10 +16,6 @@ spring:
     multipart:
       max-file-size: 2500MB
       max-request-size: 2500MB
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:job-template.sql
 
 mybatis-plus:
   configuration:
