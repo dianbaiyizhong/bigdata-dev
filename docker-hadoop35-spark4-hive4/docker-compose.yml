@@ -5,7 +5,7 @@ services:
     build:
       context: ./bigdata-ubuntu  # 构建上下文目录
       dockerfile: Dockerfile     # 该目录下的 Dockerfile 文件名
-    image: bigdata-ubuntu:jdk21-hadoop3.4.1
+    image: bigdata-ubuntu:jdk21-hadoop3.5.0
     container_name: linux001
     hostname: linux001
     networks:
@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   linux002:
-    image: bigdata-ubuntu:jdk21-hadoop3.4.1
+    image: bigdata-ubuntu:jdk21-hadoop3.5.0
     container_name: linux002
     hostname: linux002
     depends_on:
@@ -40,7 +40,7 @@ services:
 
 
   linux003:
-    image: bigdata-ubuntu:jdk21-hadoop3.4.1
+    image: bigdata-ubuntu:jdk21-hadoop3.5.0
     container_name: linux003
     hostname: linux003
     depends_on:
@@ -81,6 +81,32 @@ services:
       resources:
         limits:
           memory: 1g
+
+  # backend v2：适配 JDK 21 / Hadoop 3.4.1 / Spark 4.2.0
+  # 使用前先在 bigdata-dev-backend-v2 执行 mvn package -DskipTests，
+  # 并把 target/bigdata-dev-backend-v2-2.0.jar 拷贝到 backend/ 目录
+  # backend-v2:
+  #   build:
+  #     context: .
+  #     dockerfile: backend/Dockerfile-v2
+  #   image: backend-v2
+  #   container_name: backend-v2
+  #   hostname: backend-v2
+  #   networks:
+  #     mynetwork:
+  #       ipv4_address: 172.18.0.81
+  #   extra_hosts:
+  #     - "linux001:172.18.0.11"
+  #     - "linux002:172.18.0.12"
+  #     - "linux003:172.18.0.13"
+  #     - "mysql:172.18.0.14"
+  #     - "backend-v2:172.18.0.81"
+  #   restart: always
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 1g
+
 
   mysql:
     image: mysql:8.0

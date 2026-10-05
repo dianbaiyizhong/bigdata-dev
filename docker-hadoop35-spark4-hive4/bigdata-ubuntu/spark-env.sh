@@ -3,7 +3,7 @@
 # This file is sourced when running various Spark programs.
 
 # Hadoop 配置目录（读取 HDFS/YARN 配置）
-export HADOOP_CONF_DIR=/usr/bigdata/hadoop-3.4.1/etc/hadoop/
+export HADOOP_CONF_DIR=/usr/bigdata/hadoop-3.5.0/etc/hadoop/
 
 # JDK 21
 export JAVA_HOME=/usr/bigdata/jdk21

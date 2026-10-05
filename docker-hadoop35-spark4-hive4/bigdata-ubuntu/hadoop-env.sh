@@ -3,7 +3,7 @@
 #
 
 export JAVA_HOME=/usr/bigdata/jdk21
-export HADOOP_HOME=/usr/bigdata/hadoop-3.4.1
+export HADOOP_HOME=/usr/bigdata/hadoop-3.5.0
 export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
 export HADOOP_OS_TYPE=${HADOOP_OS_TYPE:-$(uname -s)}
 

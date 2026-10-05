@@ -47,12 +47,12 @@
     </property>
     <property>
       <name>hive.exec.local.scratchdir</name>
-      <value>/usr/bigdata/apache-hive-4.2.0-bin/tmp/</value>
+      <value>/usr/bigdata/apache-hive-4.2.1-bin/tmp/</value>
     <description>Local scratch space for Hive jobs</description>
     </property>
     <property>
       <name>hive.downloaded.resources.dir</name>
-      <value>/usr/bigdata/apache-hive-4.2.0-bin/tmp/</value>
+      <value>/usr/bigdata/apache-hive-4.2.1-bin/tmp/</value>
       <description>Temporary local directory for added resources in the remote file system.</description>
     </property>
     <property>

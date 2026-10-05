@@ -11,7 +11,7 @@
 
         <property>
                 <name>hadoop.tmp.dir</name>
-                <value>/usr/bigdata/hadoop-3.4.1/tmp</value>
+                <value>/usr/bigdata/hadoop-3.5.0/tmp</value>
         </property>
 
        <property>

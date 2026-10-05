@@ -1,0 +1,34 @@
+server:
+  port: 12408
+  tomcat:
+    max-part-count: 20
+    max-part-header-size: 8KB
+
+spring:
+  application:
+    name: bigdata-dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql:3306/bigdata_dev_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  servlet:
+    multipart:
+      max-file-size: 2500MB
+      max-request-size: 2500MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+spark:
+  spark-home: ${SPARK_HOME:/usr/bigdata/spark-4.2.0-bin-hadoop3}
+  master: ${SPARK_MASTER:yarn}
+  deploy-mode: ${SPARK_DEPLOY_MODE:cluster}
+  hadoop-conf-dir: ${HADOOP_CONF_DIR:}
+  yarn-staging-dir: /user/root/.sparkStaging/
+  hive-site-xml: ${HIVE_SITE_XML:/usr/bigdata/apache-hive-4.2.1-bin/conf/hive-site.xml}

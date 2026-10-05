@@ -9,13 +9,13 @@ sshpass -p 'root' ssh-copy-id -o StrictHostKeyChecking=no root@linux003
 
 # 2. 格式化并启动 HDFS
 hdfs namenode -format
-/usr/bigdata/hadoop-3.4.1/sbin/start-dfs.sh
+/usr/bigdata/hadoop-3.5.0/sbin/start-dfs.sh
 hadoop fs -mkdir /logs
 
 # 3. 启动 YARN / TimelineServer / JobHistory
-/usr/bigdata/hadoop-3.4.1/sbin/start-yarn.sh
-/usr/bigdata/hadoop-3.4.1/sbin/yarn-daemon.sh start timelineserver
-/usr/bigdata/hadoop-3.4.1/sbin/mr-jobhistory-daemon.sh start historyserver
+/usr/bigdata/hadoop-3.5.0/sbin/start-yarn.sh
+/usr/bigdata/hadoop-3.5.0/sbin/yarn-daemon.sh start timelineserver
+/usr/bigdata/hadoop-3.5.0/sbin/mr-jobhistory-daemon.sh start historyserver
 
 # 4. 启动 Spark Standalone 与 HistoryServer
 /usr/bigdata/spark-4.2.0-bin-hadoop3/sbin/start-all.sh

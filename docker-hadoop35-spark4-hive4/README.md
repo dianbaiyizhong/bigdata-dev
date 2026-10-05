@@ -7,9 +7,9 @@
 | 组件 | 版本 | 镜像内路径 |
 |---|---|---|
 | JDK | 21 LTS（任意发行版） | /usr/bigdata/jdk21（软链） |
-| Hadoop | 3.4.1 | /usr/bigdata/hadoop-3.4.1 |
+| Hadoop | 3.4.1 | /usr/bigdata/hadoop-3.5.0 |
 | Spark | 4.2.0（Scala 2.13） | /usr/bigdata/spark-4.2.0-bin-hadoop3 |
-| Hive | 4.2.0 | /usr/bigdata/apache-hive-4.2.0-bin |
+| Hive | 4.2.0 | /usr/bigdata/apache-hive-4.2.1-bin |
 
 ## 一、下载安装包
 
@@ -18,9 +18,9 @@
 | 文件名 | 下载地址 |
 |---|---|
 | `openjdk-21.0.2_linux-aarch64_bin.tar.gz` | Temurin：https://adoptium.net/temurin/releases/?version=21&os=linux&arch=aarch64 （下载 `OpenJDK21U-jdk_aarch64_linux_hotspot_x.x.x_x.tar.gz` 后重命名）；Bellsoft/Zulu 也可以，下载后同样重命名 |
-| `hadoop-3.4.1.tar.gz` | https://archive.apache.org/dist/hadoop/common/hadoop-3.4.1/hadoop-3.4.1.tar.gz |
+| `hadoop-3.5.0-aarch64.tar.gz` | https://archive.apache.org/dist/hadoop/common/hadoop-3.5.0/hadoop-3.5.0-aarch64.tar.gz |
 | `spark-4.2.0-bin-hadoop3.gz` | https://archive.apache.org/dist/spark/spark-4.2.0/spark-4.2.0-bin-hadoop3.gz |
-| `apache-hive-4.2.0-bin.tar.gz` | https://archive.apache.org/dist/hive/hive-4.2.0/apache-hive-4.2.0-bin.tar.gz |
+| `apache-hive-4.2.1-bin.tar.gz` | https://archive.apache.org/dist/hive/hive-4.2.0/apache-hive-4.2.1-bin.tar.gz |
 | `mysql-connector-j-8.0.31.jar` | 已从旧工程复制，无需再下载 |
 
 > 注意：
@@ -36,7 +36,7 @@ cd docker-hadoop3.4.1
 docker compose build
 ```
 
-如只构建大数据镜像：`docker compose build linux001`（构建出 `bigdata-ubuntu:jdk21-hadoop3.4.1`，linux002/003 复用同一镜像）。
+如只构建大数据镜像：`docker compose build linux001`（构建出 `bigdata-ubuntu:jdk21-hadoop3.5.0`，linux002/003 复用同一镜像）。
 
 ## 三、启动
 
